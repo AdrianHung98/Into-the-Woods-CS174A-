@@ -1,11 +1,16 @@
-import {defs, tiny} from './common.js';
+import {defs, tiny} from './../examples/common.js';
 // Pull these names into this module's scope for convenience:
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
 const {Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere} = defs
 
-import {Shape_From_File} from './obj-file-demo.js'
+import {Shape_From_File} from './../examples/obj-file-demo.js'
 import {Color_Phong_Shader, Shadow_Textured_Phong_Shader,
     Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './bsp-demo-shaders.js'
+
+
+import {defs2} from './common-project.js';
+
+const {Cube2} = defs2;
 
 // 2D shape, to display the texture buffer
 const Square =
@@ -35,7 +40,7 @@ export class Bsp_Demo extends Scene {
         this.shapes = {
             "teapot": new Shape_From_File("assets/teapot.obj"),
             "sphere": new Subdivision_Sphere(6),
-            "cube": new Cube(),
+            "cube": new Cube2(),
             "square_2d": new Square(),
         };
 

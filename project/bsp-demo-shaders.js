@@ -1,4 +1,4 @@
-import {defs, tiny} from './common.js';
+import {defs, tiny} from './../examples/common.js';
 // Pull these names into this module's scope for convenience:
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
 const {Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere} = defs
@@ -11,14 +11,14 @@ export class Color_Phong_Shader extends defs.Phong_Shader {
             // ********* VERTEX SHADER *********
             return this.shared_glsl_code() + `
                 varying vec2 f_tex_coord;
-                attribute vec3 position, normal;                            
+                attribute vec3 position, normal;
                 // Position is expressed in object coordinates.
                 attribute vec2 texture_coord;
-                
+
                 uniform mat4 model_transform;
                 uniform mat4 projection_camera_model_transform;
-        
-                void main(){                                                                   
+
+                void main(){
                     // The vertex's final resting place (in NDCS):
                     gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
                     // The final normal vector in screen space.
@@ -38,9 +38,9 @@ export class Color_Phong_Shader extends defs.Phong_Shader {
                 uniform sampler2D light_depth_texture;
                 uniform mat4 light_view_mat;
                 uniform mat4 light_proj_mat;
-                
+
                 void main(){
-                    gl_FragColor = vec4( (shape_color.xyz ) * ambient, shape_color.w ); 
+                    gl_FragColor = vec4( (shape_color.xyz ) * ambient, shape_color.w );
                                                                              // Compute the final color with contributions from lights:
                     gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
                   } `;
@@ -100,30 +100,30 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                 uniform float light_attenuation_factors[N_LIGHTS];
                 uniform vec4 shape_color;
                 uniform vec3 squared_scale, camera_center;
-        
+
                 // Specifier "varying" means a variable's final value will be passed from the vertex shader
                 // on to the next phase (fragment shader), then interpolated per-fragment, weighted by the
                 // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).
                 varying vec3 N, vertex_worldspace;
-                // ***** PHONG SHADING HAPPENS HERE: *****                                       
-                vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace, 
-                        out vec3 light_diffuse_contribution, out vec3 light_specular_contribution ){                                        
+                // ***** PHONG SHADING HAPPENS HERE: *****
+                vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace,
+                        out vec3 light_diffuse_contribution, out vec3 light_specular_contribution ){
                     // phong_model_lights():  Add up the lights' contributions.
                     vec3 E = normalize( camera_center - vertex_worldspace );
                     vec3 result = vec3( 0.0 );
                     light_diffuse_contribution = vec3( 0.0 );
                     light_specular_contribution = vec3( 0.0 );
                     for(int i = 0; i < N_LIGHTS; i++){
-                        // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
-                        // light will appear directional (uniform direction from all points), and we 
+                        // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+                        // light will appear directional (uniform direction from all points), and we
                         // simply obtain a vector towards the light by directly using the stored value.
-                        // Otherwise if w is 1 it will appear as a point light -- compute the vector to 
-                        // the point light's location from the current surface point.  In either case, 
-                        // fade (attenuate) the light as the vector needed to reach it gets longer.  
-                        vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
-                                                       light_positions_or_vectors[i].w * vertex_worldspace;                                             
+                        // Otherwise if w is 1 it will appear as a point light -- compute the vector to
+                        // the point light's location from the current surface point.  In either case,
+                        // fade (attenuate) the light as the vector needed to reach it gets longer.
+                        vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz -
+                                                       light_positions_or_vectors[i].w * vertex_worldspace;
                         float distance_to_light = length( surface_to_light_vector );
-        
+
                         vec3 L = normalize( surface_to_light_vector );
                         vec3 H = normalize( L + E );
                         // Compute the diffuse and specular components from the Phong
@@ -131,7 +131,7 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                         float diffuse  =      max( dot( N, L ), 0.0 );
                         float specular = pow( max( dot( N, H ), 0.0 ), smoothness );
                         float attenuation = 1.0 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
-                        
+
                         vec3 light_contribution = shape_color.xyz * light_colors[i].xyz * diffusivity * diffuse
                                                                   + light_colors[i].xyz * specularity * specular;
                         light_diffuse_contribution += attenuation * shape_color.xyz * light_colors[i].xyz * diffusivity * diffuse;
@@ -145,14 +145,14 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
             // ********* VERTEX SHADER *********
             return this.shared_glsl_code() + `
                 varying vec2 f_tex_coord;
-                attribute vec3 position, normal;                            
+                attribute vec3 position, normal;
                 // Position is expressed in object coordinates.
                 attribute vec2 texture_coord;
-                
+
                 uniform mat4 model_transform;
                 uniform mat4 projection_camera_model_transform;
-        
-                void main(){                                                                   
+
+                void main(){
                     // The vertex's final resting place (in NDCS):
                     gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
                     // The final normal vector in screen space.
@@ -178,7 +178,7 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                 uniform bool use_texture;
                 uniform bool draw_shadow;
                 uniform float light_texture_size;
-                
+
                 float PCF_shadow(vec2 center, float projected_depth) {
                     float shadow = 0.0;
                     float texel_size = 1.0 / light_texture_size;
@@ -186,52 +186,52 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                     {
                         for(int y = -1; y <= 1; ++y)
                         {
-                            float light_depth_value = texture2D(light_depth_texture, center + vec2(x, y) * texel_size).r; 
-                            shadow += projected_depth >= light_depth_value + light_depth_bias ? 1.0 : 0.0;        
-                        }    
+                            float light_depth_value = texture2D(light_depth_texture, center + vec2(x, y) * texel_size).r;
+                            shadow += projected_depth >= light_depth_value + light_depth_bias ? 1.0 : 0.0;
+                        }
                     }
                     shadow /= 9.0;
                     return shadow;
                 }
-                
+
                 void main(){
                     // Sample the texture image in the correct place:
                     vec4 tex_color = texture2D( texture, f_tex_coord );
                     if (!use_texture)
                         tex_color = vec4(0, 0, 0, 1);
                     if( tex_color.w < .01 ) discard;
-                    
+
                     // Compute an initial (ambient) color:
-                    gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
-                    
+                    gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w );
+
                     // Compute the final color with contributions from lights:
                     vec3 diffuse, specular;
                     vec3 other_than_ambient = phong_model_lights( normalize( N ), vertex_worldspace, diffuse, specular );
-                    
+
                     // Deal with shadow:
                     if (draw_shadow) {
                         vec4 light_tex_coord = (light_proj_mat * light_view_mat * vec4(vertex_worldspace, 1.0));
                         // convert NDCS from light's POV to light depth texture coordinates
-                        light_tex_coord.xyz /= light_tex_coord.w; 
+                        light_tex_coord.xyz /= light_tex_coord.w;
                         light_tex_coord.xyz *= 0.5;
                         light_tex_coord.xyz += 0.5;
                         float light_depth_value = texture2D( light_depth_texture, light_tex_coord.xy ).r;
                         float projected_depth = light_tex_coord.z;
-                        
+
                         bool inRange =
                             light_tex_coord.x >= 0.0 &&
                             light_tex_coord.x <= 1.0 &&
                             light_tex_coord.y >= 0.0 &&
                             light_tex_coord.y <= 1.0;
-                              
+
                         float shadowness = PCF_shadow(light_tex_coord.xy, projected_depth);
-                        
+
                         if (inRange && shadowness > 0.3) {
                             diffuse *= 0.2 + 0.8 * (1.0 - shadowness);
                             specular *= 1.0 - shadowness;
                         }
                     }
-                    
+
                     gl_FragColor.xyz += diffuse + specular;
                 } `;
         }
@@ -313,14 +313,14 @@ export class Depth_Texture_Shader_2D extends defs.Phong_Shader {
             // ********* VERTEX SHADER *********
             return this.shared_glsl_code() + `
                 varying vec2 f_tex_coord;
-                attribute vec3 position, normal;                            
+                attribute vec3 position, normal;
                 // Position is expressed in object coordinates.
                 attribute vec2 texture_coord;
-                
+
                 uniform mat4 model_transform;
                 uniform mat4 projection_camera_model_transform;
-        
-                void main(){                                                                   
+
+                void main(){
                     // The vertex's final resting place (in NDCS):
                     gl_Position = model_transform * vec4( position.xy, -1, 1.0 ); // <== only Model, no View
                     // The final normal vector in screen space.
@@ -339,14 +339,14 @@ export class Depth_Texture_Shader_2D extends defs.Phong_Shader {
                 varying vec2 f_tex_coord;
                 uniform sampler2D texture;
                 uniform float animation_time;
-                
+
                 void main(){
                     // Sample the texture image in the correct place:
                     vec4 tex_color = texture2D( texture, f_tex_coord );
                     tex_color.y = tex_color.z = tex_color.x;
                     if( tex_color.w < .01 ) discard;
                                                                              // Compute an initial (ambient) color:
-                    gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
+                    gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w );
                                                                              // Compute the final color with contributions from lights:
                     gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
                   } `;
