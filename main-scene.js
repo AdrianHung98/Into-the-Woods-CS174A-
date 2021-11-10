@@ -9,6 +9,8 @@ import {Text_Demo} from "./examples/text-demo.js"
 import {Transforms_Sandbox} from "./examples/transforms-sandbox.js"
 import {Shadow_Demo} from "./examples/shadow-demo.js"
 
+import {Bsp_Demo} from "./project/bsp-demo.js"
+
 // Pull these names into this module's scope for convenience:
 const {
     Vector, Vector3, vec, vec3, vec4, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene,
@@ -40,7 +42,7 @@ Object.assign(defs,
 
 // (Can define Main_Scene's class here)
 
-const Main_Scene = Shadow_Demo;
+const Main_Scene = Bsp_Demo;
 const Additional_Scenes = [];
 
 export {Main_Scene, Additional_Scenes, Canvas_Widget, Code_Widget, Text_Widget, defs}
