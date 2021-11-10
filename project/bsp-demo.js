@@ -3,6 +3,8 @@ import {defs, tiny} from './../examples/common.js';
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
 const {Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere} = defs
 
+const {hex_color} = tiny;
+
 import {Shape_From_File} from './../examples/obj-file-demo.js'
 import {Color_Phong_Shader, Shadow_Textured_Phong_Shader,
     Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './bsp-demo-shaders.js'
@@ -36,254 +38,355 @@ const Square =
 export class Bsp_Demo extends Scene {
     constructor() {
         super();
-        // Load the model file:
+        // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
-            "teapot": new Shape_From_File("assets/teapot.obj"),
-            "sphere": new Subdivision_Sphere(6),
-            "cube": new Cube2(),
-            "square_2d": new Square(),
+            torus: new defs.Torus(15, 15),
+            torus2: new defs.Torus(3, 15),
+            sphere: new defs.Subdivision_Sphere(4),
+            circle: new defs.Regular_2D_Polygon(1, 15),
+            // TODO:  Fill in as many additional shape instances as needed in this key/value table.
+            //        (Requirement 1)
+            //sun: new defs.Subdivision_Sphere(4),
+            sun: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(4),
+            planet1: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
+            planet2: new defs.Subdivision_Sphere(3),
+            planet3: new defs.Subdivision_Sphere(4),
+            planet3_ring: new (defs.Torus.prototype.make_flat_shaded_version())(50, 50),
+            planet4: new defs.Subdivision_Sphere(4),
+            planet4_moon: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(1),
         };
 
-        // For the teapot
-        this.stars = new Material(new Shadow_Textured_Phong_Shader(1), {
-            color: color(.5, .5, .5, 1),
-            ambient: .4, diffusivity: .5, specularity: .5,
-            color_texture: new Texture("assets/stars.png"),
-            light_depth_texture: null
+        // *** Materials
+        this.materials = {
+            test: new Material(new defs.Phong_Shader(),
+                {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
+            ring: new Material(new Ring_Shader()),
+            // TODO:  Fill in as many additional material objects as needed in this key/value table.
+            //        (Requirement 4)
+            sun: new Material(new defs.Phong_Shader(),
+                {ambient: 1.0, diffusivity: .6, color: hex_color("#ffffff")}),
+            planet1: new Material(new defs.Phong_Shader(),
+                {ambient: .0, diffusivity: .6, color: hex_color("#808080")}),
+            planet2: new Material(new Gouraud_Shader(),
+                {specularity: 1.0, ambient: .0, diffusivity: .3, color: hex_color("#80ffff")}),
+            planet3: new Material(new defs.Phong_Shader(),
+                {specularity: 1.0, ambient: .0, diffusivity: 1.0, color: hex_color("#b08040")}),
+            planet3_ring: new Material(new Ring_Shader()),
+            planet4: new Material(new defs.Phong_Shader(),
+                {specularity: 1.0, ambient: .0, diffusivity: .6, color: hex_color("#3d3d90")}),
+            planet4_moon: new Material(new defs.Phong_Shader(),
+                {ambient: .4, diffusivity: .6, color: hex_color("#bf40bf")}),
+        }
 
-        });
-        // For the floor or other plain objects
-        this.floor = new Material(new Shadow_Textured_Phong_Shader(1), {
-            color: color(1, 1, 1, 1), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
-            color_texture: null,
-            light_depth_texture: null
-        })
-        // For the first pass
-        this.pure = new Material(new Color_Phong_Shader(), {
-        })
-        // For light source
-        this.light_src = new Material(new Phong_Shader(), {
-            color: color(1, 1, 1, 1), ambient: 1, diffusivity: 0, specularity: 0
-        });
-        // For depth texture display
-        this.depth_tex =  new Material(new Depth_Texture_Shader_2D(), {
-            color: color(0, 0, .0, 1),
-            ambient: 1, diffusivity: 0, specularity: 0, texture: null
-        });
-
-        // To make sure texture initialization only does once
-        this.init_ok = false;
+        this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
     }
 
     make_control_panel() {
-        // // make_control_panel(): Sets up a panel of interactive HTML elements, including
-        // // buttons with key bindings for affecting this scene, and live info readouts.
-        // this.control_panel.innerHTML += "Dragonfly rotation angle: ";
-        // // The next line adds a live text readout of a data member of our Scene.
-        // this.live_string(box => {
-        //     box.textContent = (this.hover ? 0 : (this.t % (2 * Math.PI)).toFixed(2)) + " radians"
-        // });
-        // this.new_line();
-        // this.new_line();
-        // // Add buttons so the user can actively toggle data members of our Scene:
-        // this.key_triggered_button("Hover dragonfly in place", ["h"], function () {
-        //     this.hover ^= 1;
-        // });
-        // this.new_line();
-        // this.key_triggered_button("Swarm mode", ["m"], function () {
-        //     this.swarm ^= 1;
-        // });
     }
 
-    texture_buffer_init(gl) {
-        // Depth Texture
-        this.lightDepthTexture = gl.createTexture();
-        // Bind it to TinyGraphics
-        this.light_depth_texture = new Buffered_Texture(this.lightDepthTexture);
-        this.stars.light_depth_texture = this.light_depth_texture
-        this.floor.light_depth_texture = this.light_depth_texture
 
-        this.lightDepthTextureSize = LIGHT_DEPTH_TEX_SIZE;
-        gl.bindTexture(gl.TEXTURE_2D, this.lightDepthTexture);
-        gl.texImage2D(
-            gl.TEXTURE_2D,      // target
-            0,                  // mip level
-            gl.DEPTH_COMPONENT, // internal format
-            this.lightDepthTextureSize,   // width
-            this.lightDepthTextureSize,   // height
-            0,                  // border
-            gl.DEPTH_COMPONENT, // format
-            gl.UNSIGNED_INT,    // type
-            null);              // data
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    render_scene(context, program_state) {
+        //
+        // Perform all necessary calculations here:
+        //
+        const t = this.t = program_state.animation_time / 1000;
+        const dt = this.dt = program_state.animation_delta_time / 1000;
 
-        // Depth Texture Buffer
-        this.lightDepthFramebuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer);
-        gl.framebufferTexture2D(
-            gl.FRAMEBUFFER,       // target
-            gl.DEPTH_ATTACHMENT,  // attachment point
-            gl.TEXTURE_2D,        // texture target
-            this.lightDepthTexture,         // texture
-            0);                   // mip level
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        // period is 2*pi/w where w is pi/5, thus giving 10s period.
+        let osc = Math.sin((Math.PI/5)*t);
+        // sun
+        let radius = 2+osc;
+        let col_osc = (osc-(-1))/2.0;
+        let sun_color = color(1, col_osc, col_osc, 1);
+        // light
+        let light_size = 10**radius;
+        // planets
+        let planet_radius = [5, 8, 11, 14];
+        let planet_w = [1.0, 0.9, 0.75, 0.6];
 
-        // create a color texture of the same size as the depth texture
-        // see article why this is needed_
-        this.unusedTexture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.unusedTexture);
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            0,
-            gl.RGBA,
-            this.lightDepthTextureSize,
-            this.lightDepthTextureSize,
-            0,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            null,
-        );
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        // attach it to the framebuffer
-        gl.framebufferTexture2D(
-            gl.FRAMEBUFFER,        // target
-            gl.COLOR_ATTACHMENT0,  // attachment point
-            gl.TEXTURE_2D,         // texture target
-            this.unusedTexture,         // texture
-            0);                    // mip level
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }
 
-    render_scene(context, program_state, shadow_pass, draw_light_source=false, draw_shadow=false) {
-        // shadow_pass: true if this is the second pass that draw the shadow.
-        // draw_light_source: true if we want to draw the light source.
-        // draw_shadow: true if we want to draw the shadow
+        // do lighting
+        const light_position = vec4(0, 0, 0, 1);
+        // The parameters of the Light are: position, color, size
+        program_state.lights = [new Light(light_position, sun_color, light_size)];
 
-        let light_position = this.light_position;
-        let light_color = this.light_color;
-        const t = program_state.animation_time;
 
-        program_state.draw_shadow = draw_shadow;
+        // do objects
+        let model_transform = Mat4.identity();
+        model_transform = model_transform.times(Mat4.scale(radius, radius, radius));
+        this.shapes.sun.draw(context, program_state, model_transform, this.materials.sun.override({color: sun_color}));
 
-        if (draw_light_source && shadow_pass) {
-            this.shapes.sphere.draw(context, program_state,
-                Mat4.translation(light_position[0], light_position[1], light_position[2]).times(Mat4.scale(.5,.5,.5)),
-                this.light_src.override({color: light_color}));
+        for (let i = 0; i < 4; i++) {
+            let model_transform = Mat4.identity()
+                .times(Mat4.rotation(planet_w[i]*t, 0, 1, 0))  // Step 2.  rotate about sun.
+                .times(Mat4.translation(planet_radius[i], 0, 0))  // Step 1. Translate to dist from sun.
+                ;
+            let planet = this.shapes['planet'+(i+1)];
+            let material = this.materials['planet'+(i+1)];
+
+            if (i == 1) {
+                material.gouraud = (Math.floor(t) % 2 == 1);
+            }
+
+            planet.draw(context, program_state, model_transform, material);
+
+            // Requirement 5: camera buttons
+            this['planet_'+(i+1)] = model_transform;  // store the model_transform matrix for planet_i
+
+            if (i == 2) {
+                let p3_ring = this.shapes['planet3_ring'];
+                let ring_transform = model_transform
+                    .times(Mat4.rotation(Math.sin(1.15*t), 1, 1, 1))
+                    .times(Mat4.scale(2.5, 2.5, 0.2));
+                material = this.materials['planet3_ring'];
+                p3_ring.draw(context, program_state, ring_transform, material);
+            }
+
+            if (i== 3) {
+                let p4_moon = this.shapes['planet4_moon'];
+                let moon_transform = model_transform
+                    .times(Mat4.rotation(0.5*planet_w[i]*t, 0, 1, 0)) // Step 2. rotate abount p4
+                    .times(Mat4.translation(2.5, 0, 0)) // Step 1. Offset to orbital dist from p4
+                    ;
+                material = this.materials['planet4_moon'];
+                p4_moon.draw(context, program_state, moon_transform, material);
+
+                this.moon = moon_transform;
+            }
         }
 
-        for (let i of [-1, 1]) { // Spin the 3D model shapes as well.
-            const model_transform = Mat4.translation(2 * i, 3, 0)
-                .times(Mat4.rotation(t / 1000, -1, 2, 0))
-                .times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
-            this.shapes.teapot.draw(context, program_state, model_transform, shadow_pass? this.stars : this.pure);
-        }
-
-        let model_trans_floor = Mat4.scale(8, 0.1, 5);
-        let model_trans_ball_0 = Mat4.translation(0, 1, 0);
-        let model_trans_ball_1 = Mat4.translation(5, 1, 0);
-        let model_trans_ball_2 = Mat4.translation(-5, 1, 0);
-        let model_trans_ball_3 = Mat4.translation(0, 1, 3);
-        let model_trans_ball_4 = Mat4.translation(0, 1, -3);
-        let model_trans_wall_1 = Mat4.translation(-8, 2 - 0.1, 0).times(Mat4.scale(0.33, 2, 5));
-        let model_trans_wall_2 = Mat4.translation(+8, 2 - 0.1, 0).times(Mat4.scale(0.33, 2, 5));
-        let model_trans_wall_3 = Mat4.translation(0, 2 - 0.1, -5).times(Mat4.scale(8, 2, 0.33));
-        this.shapes.cube.draw(context, program_state, model_trans_floor, shadow_pass? this.floor : this.pure);
-        this.shapes.cube.draw(context, program_state, model_trans_wall_1, shadow_pass? this.floor : this.pure);
-        this.shapes.cube.draw(context, program_state, model_trans_wall_2, shadow_pass? this.floor : this.pure);
-        this.shapes.cube.draw(context, program_state, model_trans_wall_3, shadow_pass? this.floor : this.pure);
-        this.shapes.sphere.draw(context, program_state, model_trans_ball_0, shadow_pass? this.floor : this.pure);
-        this.shapes.sphere.draw(context, program_state, model_trans_ball_1, shadow_pass? this.floor : this.pure);
-        this.shapes.sphere.draw(context, program_state, model_trans_ball_2, shadow_pass? this.floor : this.pure);
-        this.shapes.sphere.draw(context, program_state, model_trans_ball_3, shadow_pass? this.floor : this.pure);
-        this.shapes.sphere.draw(context, program_state, model_trans_ball_4, shadow_pass? this.floor : this.pure);
     }
+
 
     display(context, program_state) {
-        const t = program_state.animation_time;
-        const gl = context.context;
-
-        if (!this.init_ok) {
-            const ext = gl.getExtension('WEBGL_depth_texture');
-            if (!ext) {
-                return alert('need WEBGL_depth_texture');  // eslint-disable-line
-            }
-            this.texture_buffer_init(gl);
-
-            this.init_ok = true;
-        }
-
+        // display():  Called once per frame of animation.
+        // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             // Define the global camera and projection matrices, which are stored in program_state.
-            program_state.set_camera(Mat4.look_at(
-                vec3(0, 12, 12),
-                vec3(0, 2, 0),
-                vec3(0, 1, 0)
-            )); // Locate the camera here
+            program_state.set_camera(this.initial_camera_location);
         }
 
-        // The position of the light
-        this.light_position = Mat4.rotation(t / 1500, 0, 1, 0).times(vec4(3, 6, 0, 1));
-        // The color of the light
-        this.light_color = color(
-            0.667 + Math.sin(t/500) / 3,
-            0.667 + Math.sin(t/1500) / 3,
-            0.667 + Math.sin(t/3500) / 3,
-            1
-        );
+        program_state.projection_transform = Mat4.perspective(
+            Math.PI / 4, context.width / context.height, .1, 1000);
 
-        // This is a rough target of the light.
-        // Although the light is point light, we need a target to set the POV of the light
-        this.light_view_target = vec4(0, 0, 0, 1);
-        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
 
-        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
-
-        // Step 1: set the perspective and camera to the POV of light
-        const light_view_mat = Mat4.look_at(
-            vec3(this.light_position[0], this.light_position[1], this.light_position[2]),
-            vec3(this.light_view_target[0], this.light_view_target[1], this.light_view_target[2]),
-            vec3(0, 1, 0), // assume the light to target will have a up dir of +y, maybe need to change according to your case
-        );
-        const light_proj_mat = Mat4.perspective(this.light_field_of_view, 1, 0.5, 500);
-        // Bind the Depth Texture Buffer
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer);
-        gl.viewport(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        // Prepare uniforms
-        program_state.light_view_mat = light_view_mat;
-        program_state.light_proj_mat = light_proj_mat;
-        program_state.light_tex_mat = light_proj_mat;
-        program_state.view_mat = light_view_mat;
-        program_state.projection_transform = light_proj_mat;
-        this.render_scene(context, program_state, false,false, false);
-
-        // Step 2: unbind, draw to the canvas
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        program_state.view_mat = program_state.camera_inverse;
-        program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 0.5, 500);
-        this.render_scene(context, program_state, true,true, true);
-
-        // Step 3: display the textures
-        this.shapes.square_2d.draw(context, program_state,
-            Mat4.translation(-.99, .08, 0).times(
-            Mat4.scale(0.5, 0.5 * gl.canvas.width / gl.canvas.height, 1)
-            ),
-            this.depth_tex.override({texture: this.lightDepthTexture})
-        );
+        // Render scene
+        this.render_scene(context, program_state);
     }
 
-    // show_explanation(document_element) {
-    //     document_element.innerHTML += "<p>This demo loads an external 3D model file of a teapot.  It uses a condensed version of the \"webgl-obj-loader.js\" "
-    //         + "open source library, though this version is not guaranteed to be complete and may not handle some .OBJ files.  It is contained in the class \"Shape_From_File\". "
-    //         + "</p><p>One of these teapots is lit with bump mapping.  Can you tell which one?</p>";
-    // }
 }
+
+
+
+class Gouraud_Shader extends Shader {
+    // This is a Shader using Phong_Shader as template
+    // TODO: Modify the glsl coder here to create a Gouraud Shader (Planet 2)
+
+    constructor(num_lights = 2) {
+        super();
+        this.num_lights = num_lights;
+    }
+
+    shared_glsl_code() {
+        // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+        return `
+        precision mediump float;
+        const int N_LIGHTS = ` + this.num_lights + `;
+        uniform float ambient, diffusivity, specularity, smoothness;
+        uniform vec4 light_positions_or_vectors[N_LIGHTS], light_colors[N_LIGHTS];
+        uniform float light_attenuation_factors[N_LIGHTS];
+        uniform vec4 shape_color;
+        uniform vec3 squared_scale, camera_center;
+
+        // assignment3 modifications:
+        uniform bool use_gouraud;
+        varying vec4 VERTEX_COLOR;
+
+        // Specifier "varying" means a variable's final value will be passed from the vertex shader
+        // on to the next phase (fragment shader), then interpolated per-fragment, weighted by the
+        // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).
+        varying vec3 N, vertex_worldspace;
+        // ***** PHONG SHADING HAPPENS HERE: *****
+        vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace ){
+            // phong_model_lights():  Add up the lights' contributions.
+            vec3 E = normalize( camera_center - vertex_worldspace );
+            vec3 result = vec3( 0.0 );
+            for(int i = 0; i < N_LIGHTS; i++){
+                // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+                // light will appear directional (uniform direction from all points), and we
+                // simply obtain a vector towards the light by directly using the stored value.
+                // Otherwise if w is 1 it will appear as a point light -- compute the vector to
+                // the point light's location from the current surface point.  In either case,
+                // fade (attenuate) the light as the vector needed to reach it gets longer.
+                vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz -
+                                               light_positions_or_vectors[i].w * vertex_worldspace;
+                float distance_to_light = length( surface_to_light_vector );
+
+                vec3 L = normalize( surface_to_light_vector );
+                vec3 H = normalize( L + E );
+                // Compute the diffuse and specular components from the Phong
+                // Reflection Model, using Blinn's "halfway vector" method:
+                float diffuse  =      max( dot( N, L ), 0.0 );
+                float specular = pow( max( dot( N, H ), 0.0 ), smoothness );
+                float attenuation = 1.0 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
+
+                vec3 light_contribution = shape_color.xyz * light_colors[i].xyz * diffusivity * diffuse
+                                                          + light_colors[i].xyz * specularity * specular;
+                result += attenuation * light_contribution;
+            }
+            return result;
+        } `;
+    }
+
+    vertex_glsl_code() {
+        // ********* VERTEX SHADER *********
+        return this.shared_glsl_code() + `
+            attribute vec3 position, normal;
+            // Position is expressed in object coordinates.
+
+            uniform mat4 model_transform;
+            uniform mat4 projection_camera_model_transform;
+
+            void main(){
+                // The vertex's final resting place (in NDCS):
+                gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
+                // The final normal vector in screen space.
+                N = normalize( mat3( model_transform ) * normal / squared_scale);
+                vertex_worldspace = ( model_transform * vec4( position, 1.0 ) ).xyz;
+
+                if (use_gouraud) {
+                    VERTEX_COLOR      = vec4( shape_color.xyz * ambient, shape_color.w);
+                    VERTEX_COLOR.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+                }
+            } `;
+    }
+
+    fragment_glsl_code() {
+        // ********* FRAGMENT SHADER *********
+        // A fragment is a pixel that's overlapped by the current triangle.
+        // Fragments affect the final image or get discarded due to depth.
+        return this.shared_glsl_code() + `
+            void main(){
+                if (use_gouraud) {
+                    gl_FragColor = VERTEX_COLOR;
+                    return;
+                }
+                // Compute an initial (ambient) color:
+                gl_FragColor = vec4( shape_color.xyz * ambient, shape_color.w );
+                // Compute the final color with contributions from lights:
+                gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+            } `;
+    }
+
+    send_material(gl, gpu, material) {
+        // send_material(): Send the desired shape-wide material qualities to the
+        // graphics card, where they will tweak the Phong lighting formula.
+        gl.uniform4fv(gpu.shape_color, material.color);
+        gl.uniform1f(gpu.ambient, material.ambient);
+        gl.uniform1f(gpu.diffusivity, material.diffusivity);
+        gl.uniform1f(gpu.specularity, material.specularity);
+        gl.uniform1f(gpu.smoothness, material.smoothness);
+
+        // assignment3 modification:  add toggle for gouraud or phong shading
+        gl.uniform1i(gpu.use_gouraud, material.gouraud);
+    }
+
+    send_gpu_state(gl, gpu, gpu_state, model_transform) {
+        // send_gpu_state():  Send the state of our whole drawing context to the GPU.
+        const O = vec4(0, 0, 0, 1), camera_center = gpu_state.camera_transform.times(O).to3();
+        gl.uniform3fv(gpu.camera_center, camera_center);
+        // Use the squared scale trick from "Eric's blog" instead of inverse transpose matrix:
+        const squared_scale = model_transform.reduce(
+            (acc, r) => {
+                return acc.plus(vec4(...r).times_pairwise(r))
+            }, vec4(0, 0, 0, 0)).to3();
+        gl.uniform3fv(gpu.squared_scale, squared_scale);
+        // Send the current matrices to the shader.  Go ahead and pre-compute
+        // the products we'll need of the of the three special matrices and just
+        // cache and send those.  They will be the same throughout this draw
+        // call, and thus across each instance of the vertex shader.
+        // Transpose them since the GPU expects matrices as column-major arrays.
+        const PCM = gpu_state.projection_transform.times(gpu_state.camera_inverse).times(model_transform);
+        gl.uniformMatrix4fv(gpu.model_transform, false, Matrix.flatten_2D_to_1D(model_transform.transposed()));
+        gl.uniformMatrix4fv(gpu.projection_camera_model_transform, false, Matrix.flatten_2D_to_1D(PCM.transposed()));
+
+        // Omitting lights will show only the material color, scaled by the ambient term:
+        if (!gpu_state.lights.length)
+            return;
+
+        const light_positions_flattened = [], light_colors_flattened = [];
+        for (let i = 0; i < 4 * gpu_state.lights.length; i++) {
+            light_positions_flattened.push(gpu_state.lights[Math.floor(i / 4)].position[i % 4]);
+            light_colors_flattened.push(gpu_state.lights[Math.floor(i / 4)].color[i % 4]);
+        }
+        gl.uniform4fv(gpu.light_positions_or_vectors, light_positions_flattened);
+        gl.uniform4fv(gpu.light_colors, light_colors_flattened);
+        gl.uniform1fv(gpu.light_attenuation_factors, gpu_state.lights.map(l => l.attenuation));
+    }
+
+    update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+        // update_GPU(): Define how to synchronize our JavaScript's variables to the GPU's.  This is where the shader
+        // recieves ALL of its inputs.  Every value the GPU wants is divided into two categories:  Values that belong
+        // to individual objects being drawn (which we call "Material") and values belonging to the whole scene or
+        // program (which we call the "Program_State").  Send both a material and a program state to the shaders
+        // within this function, one data field at a time, to fully initialize the shader for a draw.
+
+        // Fill in any missing fields in the Material object with custom defaults for this shader:
+        const defaults = {color: color(0, 0, 0, 1), ambient: 0, diffusivity: 1, specularity: 1, smoothness: 40};
+        material = Object.assign({}, defaults, material);
+
+        this.send_material(context, gpu_addresses, material);
+        this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
+    }
+}
+
+class Ring_Shader extends Shader {
+    update_GPU(context, gpu_addresses, graphics_state, model_transform, material) {
+        // update_GPU():  Defining how to synchronize our JavaScript's variables to the GPU's:
+        const [P, C, M] = [graphics_state.projection_transform, graphics_state.camera_inverse, model_transform],
+            PCM = P.times(C).times(M);
+        context.uniformMatrix4fv(gpu_addresses.model_transform, false, Matrix.flatten_2D_to_1D(model_transform.transposed()));
+        context.uniformMatrix4fv(gpu_addresses.projection_camera_model_transform, false,
+            Matrix.flatten_2D_to_1D(PCM.transposed()));
+    }
+
+    shared_glsl_code() {
+        // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+        return `
+        precision mediump float;
+        varying vec4 point_position;
+        varying vec4 center;
+        `;
+    }
+
+    vertex_glsl_code() {
+        // ********* VERTEX SHADER *********
+        // TODO:  Complete the main function of the vertex shader (Extra Credit Part II).
+        return this.shared_glsl_code() + `
+        attribute vec3 position;
+        uniform mat4 model_transform;
+        uniform mat4 projection_camera_model_transform;
+
+        void main(){
+            center = vec4(0, 0, 0, 1);
+            point_position = vec4(position, 1);
+            gl_Position = projection_camera_model_transform * vec4(position, 1);
+//            point_position = model_transform * vec4(position, 1);
+        }`;
+    }
+
+    fragment_glsl_code() {
+        // ********* FRAGMENT SHADER *********
+        // TODO:  Complete the main function of the fragment shader (Extra Credit Part II).
+        return this.shared_glsl_code() + `
+        void main(){
+             vec4 ring_col = vec4(0.690, 0.502, 0.251, 1);  // #b08040 as vec4
+             // 2pi/100 = T = period of sin wave pattern (# of rings). so increasing this param will incr # of rings
+             gl_FragColor = sin(75.0 * distance(center, point_position)) * ring_col;
+        }`;
+    }
+}
+
+
 
