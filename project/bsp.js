@@ -51,7 +51,7 @@ function whichSide_point(bsp_line, p1) {
     else return "collinear";
 }
 
-function whichSide_linesegment(bsp_line, ls1) {
+function whichSide_lseg(bsp_line, ls1) {
     let which1 = whichSide_point(bsp_line, ls1.p1);
     let which2 = whichSide_point(bsp_line, ls1.p2);
 
@@ -127,8 +127,9 @@ class BSPDivider {
 }
 
 
-
-let a = new BSPNode();
+//
+// Test lines and whichSide_point
+//
 
 let v = vec3(1,2,3);
 console.log(v[1]);
@@ -160,6 +161,39 @@ console.log(whichSide_point(bsp_line_a, vec3(0,0,0)));
 console.log(whichSide_point(bsp_line_a, vec3(0,0.0001,0)));
 console.log(whichSide_point(bsp_line_a, vec3(0,-0.0001,0)));
 
+//
+// Test line-segments and whichSide_linesegment
+//
 
-let bsp_divider = new BSPDivider();
+let lseg_a = new BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0));
+let lseg_b = new BSPLineSegment(vec3(0,-1,0), vec3(0,1,0), vec3(-1,0,0));
+let lseg_c = new BSPLineSegment(vec3(2,-1.5,0), vec3(3,1.5,0), vec3(-1,1,0));
+let lseg_d = new BSPLineSegment(vec3(0,-2,0), vec3(-1,1.5,0), vec3(-1,-1,0));
+
+let lseg_a2 = new BSPLineSegment(vec3(0,1,0), vec3(2,1,0), vec3(0,-1,0));
+let lseg_a3 = new BSPLineSegment(vec3(0,-1,0), vec3(2,-1,0), vec3(0,-1,0));
+
+let lsegs = [lseg_a, lseg_b, lseg_c, lseg_d];
+
+console.log(''+lsegs);
+
+console.log(whichSide_lseg(bsp_line_a, lseg_a));
+console.log(whichSide_lseg(bsp_line_a, lseg_b));
+console.log(whichSide_lseg(bsp_line_a, lseg_c));
+console.log(whichSide_lseg(bsp_line_a, lseg_d));
+
+console.log(whichSide_lseg(bsp_line_a, lseg_a2));
+console.log(whichSide_lseg(bsp_line_a, lseg_a3));
+
+
+//
+// Test BSPNode and BSPDivider
+//
+
+//let bsp_divider = new BSPDivider();
+//
+//let a = new BSPNode();
+//a.push(
+
+//bsp_divider.divide(a);
 
