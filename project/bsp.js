@@ -67,9 +67,10 @@ class BSPLineSegment {
         this.p1 = p1;
         this.p2 = p2;
         this.n = normalize(n);
+        this.p = midpoint(p1, p2);
     }
     toString() {
-        return '{p1: [' + this.p1 + '], p2: [' + this.p2 + '], normal: [' + this.n + ']}';
+        return '{p1: [' + this.p1 + '], p2: [' + this.p2 + '], normal: [' + this.n + '], p: [' + this.p + ']}';
     }
 }
 
@@ -87,10 +88,18 @@ class BSPNode {
     constructor(polygons=[]) {
         console.log('creating bsp node');
         this.polygons = polygons;
-        this.hyperplane = new BSPLine(vec3(0,0,0), vec3(0,-1,0));
     }
     push(polygon) {
         this.polygons.push(polygon);
+    }
+    toString() {
+        let msg = '';
+        if (this.polygons) msg += 'this.polygons:\n\t' + this.polygons.join('\n\t') + '\n';
+        if (this.front) msg += 'this.front:\n\t' + this.front.join('\n\t') + '\n';
+        if (this.back) msg += 'this.back:\n\t' + this.back.join('\n\t') + '\n';
+        if (this.collinear) msg += 'this.collinear:\n\t' + this.collinear.join('\n\t') + '\n';
+        if (this.hyperplane) msg += 'this.hyperplane:\n\t' + this.hyperplane + '\n';
+        return msg;
     }
 }
 
@@ -105,6 +114,11 @@ class BSPDivider {
     divide(node) {
         let collinear = [], front = [], back = [];
         for (let polyg of node.polygons) {
+            if (! node.hyperplane) {
+                // uses the first polyg encountered in node.polygons as the hyperplane
+                node.hyperplane = new BSPLine(polyg.p, polyg.n); // TODO: assumes every polygon has a .p (center) and .n
+            }
+
             let side = whichSide_linesegment(node.hyperplane, polyg);
 
             if (side == "front") front.push(polyg);
@@ -192,10 +206,15 @@ console.log(whichSide_lseg(bsp_line_a, lseg_a3));
 // Test BSPNode and BSPDivider
 //
 
-//let bsp_divider = new BSPDivider();
-//
-//let a = new BSPNode();
-//a.push(
+let bsp_divider = new BSPDivider();
+
+let a = new BSPNode();
+a.push(lseg_a);
+a.push(lseg_b);
+a.push(lseg_c);
+a.push(lseg_d);
+
+console.log(''+a);
 
 //bsp_divider.divide(a);
 
