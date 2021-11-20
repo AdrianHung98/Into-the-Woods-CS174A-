@@ -32,6 +32,14 @@ function normalize(v) {
     );
 }
 
+function add3(v1, v2) {
+    return vec3(
+        v1[0] + v2[0],
+        v1[1] + v2[1],
+        v1[2] + v2[2]
+    );
+}
+
 function sub3(v1, v2) {
     return vec3(
         v1[0] - v2[0],
@@ -46,8 +54,8 @@ function dot(v1, v2) {
 
 function whichSide_point(bsp_line, p1) {
     let dp = dot(sub3(p1, bsp_line.p), bsp_line.n);
-    if (dp > 0) return "front"
-    else if (dp < 0) return "back"
+    if (dp > 0) return "front";
+    else if (dp < 0) return "back";
     else return "collinear";
 }
 
@@ -61,6 +69,25 @@ function whichSide_lseg(bsp_line, ls1) {
     else return "both";
 }
 
+function split_lseg(hyperplane, lseg) {
+    console.log('splitting:  hyperplane: ' + hyperplane + ', line-segment: ' + lseg);
+
+    // https://en.wikipedia.org/wiki/Line-plane_intersection
+    let p0 = hyperplane.p;
+    let l0 = lseg.p1;
+    let l = sub3(lseg.p2, lseg.p1);
+    let numerator = dot(sub3(p0, l0), hyperplane.n);
+    let denominator = dot(l, hyperplane.n);
+    let d = numerator / denominator;
+    let p = add3(l0, vec3(d*l[0], d*l[1], d*l[2]));
+
+    console.log('\t d: ' + d + ', p: [' + p + ']');
+
+    let lseg1 = new BSPLineSegment(l0, p, lseg.n);  // keep the same normal
+    let lseg2 = new BSPLineSegment(p, lseg.p2, lseg.n);
+
+    return [lseg1, lseg2];
+}
 
 class BSPLineSegment {
     constructor(p1, p2, n) {
@@ -95,9 +122,9 @@ class BSPNode {
     toString() {
         let msg = '';
         if (this.polygons) msg += 'this.polygons:\n\t' + this.polygons.join('\n\t') + '\n';
-        if (this.front) msg += 'this.front:\n\t' + this.front.join('\n\t') + '\n';
-        if (this.back) msg += 'this.back:\n\t' + this.back.join('\n\t') + '\n';
-        if (this.collinear) msg += 'this.collinear:\n\t' + this.collinear.join('\n\t') + '\n';
+        if (this.front) msg += 'this.front:\n\t' + this.front + '\n';
+        if (this.back) msg += 'this.back:\n\t' + this.back + '\n';
+        if (this.collinear) msg += 'this.collinear:\n\t' + this.collinear + '\n';
         if (this.hyperplane) msg += 'this.hyperplane:\n\t' + this.hyperplane + '\n';
         return msg;
     }
@@ -111,7 +138,7 @@ class BSPDivider {
         console.log('bsp divider constructor');
     }
 
-    divide(node) {
+    divide(node, depth=-1) {
         let collinear = [], front = [], back = [];
         for (let polyg of node.polygons) {
             if (! node.hyperplane) {
@@ -119,13 +146,15 @@ class BSPDivider {
                 node.hyperplane = new BSPLine(polyg.p, polyg.n); // TODO: assumes every polygon has a .p (center) and .n
             }
 
-            let side = whichSide_linesegment(node.hyperplane, polyg);
+            let side = whichSide_lseg(node.hyperplane, polyg);
+            console.log('polyg: ' + polyg + ', side: ' + side);
 
             if (side == "front") front.push(polyg);
             else if (side == "back") back.push(polyg);
-            else if (side == "collinear") collienar.push(polyg);
+            else if (side == "collinear") collinear.push(polyg);
             else if (side == "both") {
-                polyg_front, polyg_back = split_linesegment(polyg);
+                let [polyg_front, polyg_back] = split_lseg(node.hyperplane, polyg);
+                console.log('polyg_front: ' + polyg_front + ', polyg_back: ' + polyg_back);
                 front.push(polyg_front);
                 back.push(polyg_back);
             }
@@ -135,8 +164,10 @@ class BSPDivider {
         node.front = new BSPNode(front);
         node.back = new BSPNode(back);
 
-        divide(node.front);
-        divide(node.back);
+        if (depth == 0) return;
+
+        divide(node.front, depth-1);
+        divide(node.back, depth-1);
     }
 }
 
@@ -176,7 +207,7 @@ console.log(whichSide_point(bsp_line_a, vec3(0,0.0001,0)));
 console.log(whichSide_point(bsp_line_a, vec3(0,-0.0001,0)));
 
 //
-// Test line-segments and whichSide_linesegment
+// Test line-segments and whichSide_lseg
 //
 
 let lseg_a = new BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0));
@@ -216,5 +247,7 @@ a.push(lseg_d);
 
 console.log(''+a);
 
-//bsp_divider.divide(a);
+bsp_divider.divide(a, 0);
+
+console.log(''+a);
 
