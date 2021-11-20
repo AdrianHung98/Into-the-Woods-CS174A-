@@ -83,31 +83,35 @@ function split_lseg(hyperplane, lseg) {
 
     console.log('\t d: ' + d + ', p: [' + p + ']');
 
-    let lseg1 = new BSPLineSegment(l0, p, lseg.n);  // keep the same normal
-    let lseg2 = new BSPLineSegment(p, lseg.p2, lseg.n);
+    let lseg1 = new BSPLineSegment(l0, p, lseg.n, lseg.tag+'.1');  // keep the same normal
+    let lseg2 = new BSPLineSegment(p, lseg.p2, lseg.n, lseg.tag+'.2');
 
     return [lseg1, lseg2];
 }
 
 class BSPLineSegment {
-    constructor(p1, p2, n) {
+    constructor(p1, p2, n, tag='') {
         this.p1 = p1;
         this.p2 = p2;
         this.n = normalize(n);
         this.p = midpoint(p1, p2);
+        this.tag = tag;
     }
     toString() {
-        return '{p1: [' + this.p1 + '], p2: [' + this.p2 + '], normal: [' + this.n + '], p: [' + this.p + ']}';
+        return '{' + (this.tag == '' ? '' : this.tag + ': ')
+            + 'p1: [' + this.p1 + '], p2: [' + this.p2 + '], normal: [' + this.n + '], p: [' + this.p + ']}';
     }
 }
 
 class BSPLine {
-    constructor(p, n) {
+    constructor(p, n, tag='') {
         this.p = p;
         this.n = normalize(n);
+        this.tag = tag;
     }
     toString() {
-        return '{p: [' + this.p + '], normal: [' + this.n + ']}';
+        return '{' + (this.tag == '' ? '' : this.tag + ': ')
+            + 'p: [' + this.p + '], normal: [' + this.n + ']}';
     }
 }
 
@@ -166,8 +170,8 @@ class BSPDivider {
 
         if (depth == 0) return;
 
-        divide(node.front, depth-1);
-        divide(node.back, depth-1);
+        this.divide(node.front, depth-1);
+        this.divide(node.back, depth-1);
     }
 }
 
@@ -210,15 +214,15 @@ console.log(whichSide_point(bsp_line_a, vec3(0,-0.0001,0)));
 // Test line-segments and whichSide_lseg
 //
 
-let lseg_a = new BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0));
-let lseg_b = new BSPLineSegment(vec3(0,-1,0), vec3(0,1,0), vec3(-1,0,0));
-let lseg_c = new BSPLineSegment(vec3(2,-1.5,0), vec3(3,1.5,0), vec3(-1,1,0));
-let lseg_d = new BSPLineSegment(vec3(0,-2,0), vec3(-1,1.5,0), vec3(-1,-1,0));
+let lseg_a = new BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0), 'lseg_a');
+let lseg_b = new BSPLineSegment(vec3(0,-1,0), vec3(0,1,0), vec3(-1,0,0), 'lseg_b');
+let lseg_c = new BSPLineSegment(vec3(2,-1.5,0), vec3(3,1.5,0), vec3(-1,1,0), 'lseg_c');
+let lseg_d = new BSPLineSegment(vec3(0,-2,0), vec3(-1,1.5,0), vec3(-1,-1,0), 'lseg_d');
 
 // lseg_a + (0,1,0):  should be behind hyperplane bsp_line_a
-let lseg_a2 = new BSPLineSegment(vec3(0,1,0), vec3(2,1,0), vec3(0,-1,0));
+let lseg_a2 = new BSPLineSegment(vec3(0,1,0), vec3(2,1,0), vec3(0,-1,0), 'lseg_a2');
 // lseg_a - (0,1,0):  should be in front of hyperplane bsp_line_a
-let lseg_a3 = new BSPLineSegment(vec3(0,-1,0), vec3(2,-1,0), vec3(0,-1,0));
+let lseg_a3 = new BSPLineSegment(vec3(0,-1,0), vec3(2,-1,0), vec3(0,-1,0), 'lseg_a3');
 
 let lsegs = [lseg_a, lseg_b, lseg_c, lseg_d];
 
@@ -247,7 +251,7 @@ a.push(lseg_d);
 
 console.log(''+a);
 
-bsp_divider.divide(a, 0);
+bsp_divider.divide(a, 1);
 
 console.log(''+a);
 
