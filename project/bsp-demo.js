@@ -34,6 +34,33 @@ const Square =
         }
     }
 
+const Tree0 =
+    class Tree0 extends Shape {
+        constructor() {
+            super("position", "normal", "texture_coord");
+            this.tree_w = 0.25;
+            this.tree_d = 0.25;
+            this.tree_h = 0.75;
+            this.tree_r = 0.5;
+            this.draw_stem();
+            this.draw_leaf();
+        }
+
+        draw_stem() {
+            Cube.insert_transformed_copy_into(this, [], Mat4.identity()
+                .times(Mat4.translation(0, this.tree_h, 0))
+                .times(Mat4.scale(this.tree_w, this.tree_h, this.tree_d))
+            );
+        }
+
+        draw_leaf() {
+            Subdivision_Sphere.insert_transformed_copy_into(this, [4], Mat4.identity()
+                .times(Mat4.translation(0, this.tree_h*2, 0))
+                .times(Mat4.scale(this.tree_r, this.tree_r, this.tree_r))
+            );
+        }
+    }
+
 // The scene
 export class Bsp_Demo extends Scene {
     constructor() {
@@ -47,6 +74,7 @@ export class Bsp_Demo extends Scene {
             sun: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(4),
             planet1: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
             cube: new Cube(),
+            tree0: new Tree0(),
         };
 
         // *** Materials
@@ -116,12 +144,12 @@ export class Bsp_Demo extends Scene {
         this.shapes.planet1.draw(context, program_state, mt_planet, this.materials.planet1);
 
         // draw ground
-//        let model_trans_floor = Mat4.scale(8, 0.1, 5);
-//        this.shapes.cube.draw(context, program_state, model_trans_floor, this.materials.floor);
-
         let mt_floor = Mat4.scale(30, 0.1, 20);
         this.shapes.cube.draw(context, program_state, mt_floor, this.materials.floor);
 
+        // let there be trees
+        let mt_tree = Mat4.translation(0,0,0);
+        this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.floor);
     }
 
 
