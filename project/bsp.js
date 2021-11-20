@@ -5,15 +5,15 @@ require('./tiny-graphics-copy.js');
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
 
 
-class Line {
-    constructor(p1, p2) {
-        this.p1 = p1;
-        this.p2 = p2;
-    }
-    toString() {
-        return '{[' + this.p1 + '], [' + this.p2 + ']} ';
-    }
-}
+//class Line {
+//    constructor(p1, p2) {
+//        this.p1 = p1;
+//        this.p2 = p2;
+//    }
+//    toString() {
+//        return '{[' + this.p1 + '], [' + this.p2 + ']} ';
+//    }
+//}
 
 function midpoint(p1, p2) {
     return vec3(
@@ -124,13 +124,13 @@ class BSPNode {
         this.polygons.push(polygon);
     }
     toString() {
-        let msg = '*'.repeat(80) + '\n' + '-----BSPNode-----\n';
+        let msg = '---->'.repeat(10) + '\n' + '***BSPNode***\n';
         if (this.polygons) msg += 'this.polygons:\n\t' + this.polygons.join('\n\t') + '\n';
         if (this.front) msg += 'this.front:\n\t' + this.front.toString().replace(/\n/g,'\n\t') + '\n';
         if (this.back) msg += 'this.back:\n\t' + this.back.toString().replace(/\n/g,'\n\t') + '\n';
         if (this.collinear) msg += 'this.collinear:\n\t' + this.collinear.toString().replace(/\n/g,'\n\t') + '\n';
         if (this.hyperplane) msg += 'this.hyperplane:\n\t' + this.hyperplane + '\n';
-        return msg;
+        return msg + '<----'.repeat(10);
     }
 }
 
@@ -147,7 +147,7 @@ class BSPDivider {
         for (let polyg of node.polygons) {
             if (! node.hyperplane) {
                 // uses the first polyg encountered in node.polygons as the hyperplane
-                node.hyperplane = new BSPLine(polyg.p, polyg.n); // TODO: assumes every polygon has a .p (center) and .n
+                node.hyperplane = new BSPLine(polyg.p, polyg.n, polyg.tag+'.hypp'); // TODO: assumes every polygon has a .p (center) and .n
             }
 
             let side = whichSide_lseg(node.hyperplane, polyg);
@@ -184,22 +184,22 @@ let v = vec3(1,2,3);
 console.log(v[1]);
 console.log(''+v);
 
-let l1 = new Line(vec3(1,2,3), vec3(1,2,5));
-console.log(''+l1);
+//let l1 = new Line(vec3(1,2,3), vec3(1,2,5));
+//console.log(''+l1);
+//
+//let line_a = new Line(vec3(0,0,0), vec3(2,0,0));
+//let line_b = new Line(vec3(0,-1,0), vec3(0,1,0));
+//let line_c = new Line(vec3(2,-1.5,0), vec3(3,1.5,0));
+//let line_d = new Line(vec3(0,-2,0), vec3(-1,1.5,0));
+//
+//let lines = [line_a, line_b, line_c, line_d];
+//
+//console.log(''+lines);
 
-let line_a = new Line(vec3(0,0,0), vec3(2,0,0));
-let line_b = new Line(vec3(0,-1,0), vec3(0,1,0));
-let line_c = new Line(vec3(2,-1.5,0), vec3(3,1.5,0));
-let line_d = new Line(vec3(0,-2,0), vec3(-1,1.5,0));
-
-let lines = [line_a, line_b, line_c, line_d];
-
-console.log(''+lines);
-
-let bsp_line_a = new BSPLine(midpoint(vec3(0,0,0), vec3(2,0,0)), vec3(0,-1,0));
-let bsp_line_b = new BSPLine(midpoint(vec3(0,-1,0), vec3(0,1,0)), vec3(-1,0,0));
-let bsp_line_c = new BSPLine(midpoint(vec3(2,-1.5,0), vec3(3,1.5,0)), vec3(-1,1,0));
-let bsp_line_d = new BSPLine(midpoint(vec3(0,-2,0), vec3(-1,1.5,0)), vec3(-1,-1,0));
+let bsp_line_a = new BSPLine(midpoint(vec3(0,0,0), vec3(2,0,0)), vec3(0,-1,0), 'line_a');
+let bsp_line_b = new BSPLine(midpoint(vec3(0,-1,0), vec3(0,1,0)), vec3(-1,0,0), 'line_b');
+let bsp_line_c = new BSPLine(midpoint(vec3(2,-1.5,0), vec3(3,1.5,0)), vec3(-1,1,0), 'line_c');
+let bsp_line_d = new BSPLine(midpoint(vec3(0,-2,0), vec3(-1,1.5,0)), vec3(-1,-1,0), 'line_d');
 
 let bsp_lines = [bsp_line_a, bsp_line_b, bsp_line_c, bsp_line_d];
 
