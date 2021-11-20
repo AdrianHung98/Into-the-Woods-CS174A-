@@ -5,16 +5,6 @@ require('./tiny-graphics-copy.js');
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
 
 
-//class Line {
-//    constructor(p1, p2) {
-//        this.p1 = p1;
-//        this.p2 = p2;
-//    }
-//    toString() {
-//        return '{[' + this.p1 + '], [' + this.p2 + ']} ';
-//    }
-//}
-
 function midpoint(p1, p2) {
     return vec3(
         (p1[0] + p2[0])/2,
@@ -183,18 +173,6 @@ class BSPDivider {
 let v = vec3(1,2,3);
 console.log(v[1]);
 console.log(''+v);
-
-//let l1 = new Line(vec3(1,2,3), vec3(1,2,5));
-//console.log(''+l1);
-//
-//let line_a = new Line(vec3(0,0,0), vec3(2,0,0));
-//let line_b = new Line(vec3(0,-1,0), vec3(0,1,0));
-//let line_c = new Line(vec3(2,-1.5,0), vec3(3,1.5,0));
-//let line_d = new Line(vec3(0,-2,0), vec3(-1,1.5,0));
-//
-//let lines = [line_a, line_b, line_c, line_d];
-//
-//console.log(''+lines);
 
 let bsp_line_a = new BSPLine(midpoint(vec3(0,0,0), vec3(2,0,0)), vec3(0,-1,0), 'line_a');
 let bsp_line_b = new BSPLine(midpoint(vec3(0,-1,0), vec3(0,1,0)), vec3(-1,0,0), 'line_b');
