@@ -44,6 +44,35 @@ function dot(v1, v2) {
     return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
 }
 
+function whichSide_point(bsp_line, p1) {
+    let dp = dot(sub3(p1, bsp_line.p), bsp_line.n);
+    if (dp > 0) return "front"
+    else if (dp < 0) return "back"
+    else return "collinear";
+}
+
+function whichSide_linesegment(bsp_line, ls1) {
+    let which1 = whichSide_point(bsp_line, ls1.p1);
+    let which2 = whichSide_point(bsp_line, ls1.p2);
+
+    if (which1 == "front" && which2 == "front") return "front";
+    else if (which1 == "back" && which2 == "back") return "back";
+    else if (which1 == "collinear" && which2 == "collinear") return "collinear";
+    else return "both";
+}
+
+
+class BSPLineSegment {
+    constructor(p1, p2, n) {
+        this.p1 = p1;
+        this.p2 = p2;
+        this.n = normalize(n);
+    }
+    toString() {
+        return '{p1: [' + this.p1 + '], p2: [' + this.p2 + '], normal: [' + this.n + ']}';
+    }
+}
+
 class BSPLine {
     constructor(p, n) {
         this.p = p;
@@ -52,34 +81,54 @@ class BSPLine {
     toString() {
         return '{p: [' + this.p + '], normal: [' + this.n + ']}';
     }
-    whichSide(p1) {
-        let dp = dot(sub3(p1, this.p), this.n);
-        if (dp > 0) return "front"
-        else if (dp < 0) return "back"
-        else return "collinear";
-    }
 }
 
 class BSPNode {
-    constructor(p) {
-        this.p = p;
-    }
-}
-
-class BSPTree {
-    constructor() {
-        console.log('creating bsp tree');
-        this.front = [];
-        this.back = [];
+    constructor(polygons=[]) {
+        console.log('creating bsp node');
+        this.polygons = polygons;
         this.hyperplane = new BSPLine(vec3(0,0,0), vec3(0,-1,0));
-        this.polygons = [];
+    }
+    push(polygon) {
+        this.polygons.push(polygon);
+    }
+}
+
+class BSPDivider {
+    /**
+     * Recursively subdivides all polygons.
+     */
+    constructor() {
+        console.log('bsp divider constructor');
+    }
+
+    divide(node) {
+        let collinear = [], front = [], back = [];
+        for (let polyg of node.polygons) {
+            let side = whichSide_linesegment(node.hyperplane, polyg);
+
+            if (side == "front") front.push(polyg);
+            else if (side == "back") back.push(polyg);
+            else if (side == "collinear") collienar.push(polyg);
+            else if (side == "both") {
+                polyg_front, polyg_back = split_linesegment(polyg);
+                front.push(polyg_front);
+                back.push(polyg_back);
+            }
+        }
+        node.polygons = collinear;
+
+        node.front = new BSPNode(front);
+        node.back = new BSPNode(back);
+
+        divide(node.front);
+        divide(node.back);
     }
 }
 
 
 
-
-let a = new BSPTree();
+let a = new BSPNode();
 
 let v = vec3(1,2,3);
 console.log(v[1]);
@@ -107,8 +156,10 @@ let bsp_lines = [bsp_line_a, bsp_line_b, bsp_line_c, bsp_line_d];
 console.log(''+bsp_lines);
 
 console.log(''+bsp_line_a);
-console.log(bsp_line_a.whichSide(vec3(0,0,0)));
-console.log(bsp_line_a.whichSide(vec3(0,0.0001,0)));
-console.log(bsp_line_a.whichSide(vec3(0,-0.0001,0)));
+console.log(whichSide_point(bsp_line_a, vec3(0,0,0)));
+console.log(whichSide_point(bsp_line_a, vec3(0,0.0001,0)));
+console.log(whichSide_point(bsp_line_a, vec3(0,-0.0001,0)));
 
+
+let bsp_divider = new BSPDivider();
 
