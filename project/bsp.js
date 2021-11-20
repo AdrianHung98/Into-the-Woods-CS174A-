@@ -120,11 +120,11 @@ class BSPNode {
         this.polygons.push(polygon);
     }
     toString() {
-        let msg = '';
+        let msg = '*'.repeat(80) + '\n' + '-----BSPNode-----\n';
         if (this.polygons) msg += 'this.polygons:\n\t' + this.polygons.join('\n\t') + '\n';
-        if (this.front) msg += 'this.front:\n\t' + this.front + '\n';
-        if (this.back) msg += 'this.back:\n\t' + this.back + '\n';
-        if (this.collinear) msg += 'this.collinear:\n\t' + this.collinear + '\n';
+        if (this.front) msg += 'this.front:\n\t' + this.front.toString().replace(/\n/g,'\n\t') + '\n';
+        if (this.back) msg += 'this.back:\n\t' + this.back.toString().replace(/\n/g,'\n\t') + '\n';
+        if (this.collinear) msg += 'this.collinear:\n\t' + this.collinear.toString().replace(/\n/g,'\n\t') + '\n';
         if (this.hyperplane) msg += 'this.hyperplane:\n\t' + this.hyperplane + '\n';
         return msg;
     }
