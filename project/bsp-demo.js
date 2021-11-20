@@ -148,8 +148,18 @@ export class Bsp_Demo extends Scene {
         this.shapes.cube.draw(context, program_state, mt_floor, this.materials.floor);
 
         // let there be trees
-        let mt_tree = Mat4.translation(0,0,0);
-        this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.floor);
+        let n = 5;
+        let m = 5;
+        let TREE_W = this.shapes.tree0.tree_w;
+        let TREE_D = this.shapes.tree0.tree_d;
+        let TREE_SP_X = 2;
+        let TREE_SP_Z = 1.0;
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < m; j++) {
+                let mt_tree = Mat4.translation(0+i*(2*TREE_W+TREE_SP_X),0, 0+j*(2*TREE_D+TREE_SP_Z));
+                this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.floor);
+            }
+        }
     }
 
 
