@@ -170,7 +170,9 @@ let lseg_b = new BSPLineSegment(vec3(0,-1,0), vec3(0,1,0), vec3(-1,0,0));
 let lseg_c = new BSPLineSegment(vec3(2,-1.5,0), vec3(3,1.5,0), vec3(-1,1,0));
 let lseg_d = new BSPLineSegment(vec3(0,-2,0), vec3(-1,1.5,0), vec3(-1,-1,0));
 
+// lseg_a + (0,1,0):  should be behind hyperplane bsp_line_a
 let lseg_a2 = new BSPLineSegment(vec3(0,1,0), vec3(2,1,0), vec3(0,-1,0));
+// lseg_a - (0,1,0):  should be in front of hyperplane bsp_line_a
 let lseg_a3 = new BSPLineSegment(vec3(0,-1,0), vec3(2,-1,0), vec3(0,-1,0));
 
 let lsegs = [lseg_a, lseg_b, lseg_c, lseg_d];
