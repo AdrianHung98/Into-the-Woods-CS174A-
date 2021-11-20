@@ -34,8 +34,8 @@ const Square =
         }
     }
 
-const Tree0 =
-    class Tree0 extends Shape {
+const TreeShape0 =
+    class TreeShape0 extends Shape {
         constructor() {
             super("position", "normal", "texture_coord");
             this.tree_w = 0.25;
@@ -61,6 +61,14 @@ const Tree0 =
         }
     }
 
+const Tree =
+    class Tree {
+        constructor(x, y, z) {
+            console.log('creating tree: x: ' + x + ', y: ' + y + ', z: ' + z);
+            this.pos = vec3(x, y, z);
+        }
+    }
+
 // The scene
 export class Bsp_Demo extends Scene {
     constructor() {
@@ -74,7 +82,7 @@ export class Bsp_Demo extends Scene {
             sun: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(4),
             planet1: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
             cube: new Cube(),
-            tree0: new Tree0(),
+            tree0: new TreeShape0(),
         };
 
         // *** Materials
@@ -94,6 +102,33 @@ export class Bsp_Demo extends Scene {
 
         // lookat(eye, at, up) , see Dis w3-c page 27
         this.initial_camera_location = Mat4.look_at(vec3(0, 1, 20), vec3(0, 4, 0), vec3(0, 1, 0));
+
+        // object list of trees
+        this.trees = [];
+
+        // let there be trees
+        this.create_trees(-5, 0, 0);
+
+        this.create_trees(-15, 0, 0);
+
+        this.create_trees(10, 0, 0);
+    }
+
+    /**
+     * Create a clump of trees starting at the given x,y,z position
+     */
+    create_trees(x, y, z) {
+        let n = 5;
+        let m = 5;
+        let TREE_W = this.shapes.tree0.tree_w;
+        let TREE_D = this.shapes.tree0.tree_d;
+        let TREE_SP_X = 2;
+        let TREE_SP_Z = 1.0;
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < m; j++) {
+                this.trees.push(new Tree(x+i*(2*TREE_W+TREE_SP_X), y, z+j*(2*TREE_D+TREE_SP_Z)));
+            }
+        }
     }
 
     make_control_panel() {
@@ -147,18 +182,12 @@ export class Bsp_Demo extends Scene {
         let mt_floor = Mat4.scale(30, 0.1, 20);
         this.shapes.cube.draw(context, program_state, mt_floor, this.materials.floor);
 
-        // let there be trees
-        let n = 5;
-        let m = 5;
-        let TREE_W = this.shapes.tree0.tree_w;
-        let TREE_D = this.shapes.tree0.tree_d;
-        let TREE_SP_X = 2;
-        let TREE_SP_Z = 1.0;
-        for (let i = 0; i < n; i++) {
-            for (let j = 0; j < m; j++) {
-                let mt_tree = Mat4.translation(0+i*(2*TREE_W+TREE_SP_X),0, 0+j*(2*TREE_D+TREE_SP_Z));
-                this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.floor);
-            }
+
+        // draw trees
+        for (let tree of this.trees) {
+            let mt_tree = Mat4.identity().times(
+                Mat4.translation(tree.pos[0], tree.pos[1], tree.pos[2]));
+            this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.floor);
         }
     }
 
