@@ -57,15 +57,15 @@ export class Bsp_Demo extends Scene {
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#ffffff")}),
             planet1: new Material(new defs.Phong_Shader(),
                 {ambient: .0, diffusivity: .6, color: hex_color("#808080")}),
-            floor: new Material(new Shadow_Textured_Phong_Shader(1), {
+            floor: new Material(new Phong_Shader(), {
                 color: color(1, 1, 1, 1), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
                 color_texture: null,
                 light_depth_texture: null
             }),
         }
 
-
-        this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
+        // lookat(eye, at, up) , see Dis w3-c page 27
+        this.initial_camera_location = Mat4.look_at(vec3(0, 1, 20), vec3(0, 4, 0), vec3(0, 1, 0));
     }
 
     make_control_panel() {
@@ -79,32 +79,49 @@ export class Bsp_Demo extends Scene {
         const t = this.t = program_state.animation_time / 1000;
         const dt = this.dt = program_state.animation_delta_time / 1000;
 
-        let radius = 2;
+        let radius = 1.5;
         let light_size = 10**radius;
         let sun_color = hex_color('#FFFF00');
-        let sun_pos = vec3(-10, 5, -10);
+        let sun_pos = vec3(-10, 10, -10);
 
         // The parameters of the Light are: position, color, size
-        program_state.lights = [new Light(vec4(sun_pos[0],sun_pos[1],sun_pos[2],1), hex_color('#FFFF00'), light_size)];
+        //program_state.lights = [new Light(vec4(sun_pos[0],sun_pos[1],sun_pos[2],1), hex_color('#FFFF00'), light_size)];
+
+        // The position of the light
+        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
+        //this.light_position = Mat4.rotation(t / 1500, 0, 1, 0).times(vec4(3, 6, 0, 1));
+        // The color of the light
+        this.light_color = color(1, 1, 1, 1);
+
+        // This is a rough target of the light.
+        // Although the light is point light, we need a target to set the POV of the light
+        this.light_view_target = vec4(0, 0, 0, 1);
+        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
+
+        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
 
 
         // do objects
-        let model_transform = Mat4.identity()
+        let mt_sun = Mat4.identity()
             .times(Mat4.translation(sun_pos[0], sun_pos[1], sun_pos[2]))       // step 2:  move
             .times(Mat4.scale(radius, radius, radius))   // step 1:  scale
         ;
-        this.shapes.sun.draw(context, program_state, model_transform, this.materials.sun.override({color: sun_color}));
+        this.shapes.sun.draw(context, program_state, mt_sun, this.materials.sun.override({color: sun_color}));
 
-        model_transform = Mat4.identity()
+        let mt_planet = Mat4.identity()
             .times(Mat4.translation(sun_pos[0], sun_pos[1], sun_pos[2]))  // Step 3. Translate to sun position
             .times(Mat4.rotation(t, 0, 1, 0))  // Step 2.  rotate about sun.
             .times(Mat4.translation(5, 0, 0))  // Step 1. Translate to dist from sun.
         ;
-        this.shapes.planet1.draw(context, program_state, model_transform, this.materials.planet1);
+        this.shapes.planet1.draw(context, program_state, mt_planet, this.materials.planet1);
 
         // draw ground
-        let model_trans_floor = Mat4.scale(8, 0.1, 5);
-        this.shapes.cube.draw(context, program_state, model_trans_floor, this.materials.floor);
+//        let model_trans_floor = Mat4.scale(8, 0.1, 5);
+//        this.shapes.cube.draw(context, program_state, model_trans_floor, this.materials.floor);
+
+        let mt_floor = Mat4.scale(30, 0.1, 20);
+        this.shapes.cube.draw(context, program_state, mt_floor, this.materials.floor);
+
     }
 
 
