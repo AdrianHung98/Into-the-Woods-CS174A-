@@ -14,7 +14,7 @@ import {defs2} from './common-project.js';
 
 const {Cube2} = defs2;
 
-//import {BSPNode} from './bsp.js';
+import {bsp} from './bsp.js';
 
 // 2D shape, to display the texture buffer
 const Square =
@@ -66,7 +66,7 @@ const TreeShape0 =
 const Tree =
     class Tree {
         constructor(x, y, z) {
-            console.log('creating tree: x: ' + x + ', y: ' + y + ', z: ' + z);
+            //console.log('creating tree: x: ' + x + ', y: ' + y + ', z: ' + z);
             this.pos = vec3(x, y, z);
         }
     }
@@ -110,10 +110,12 @@ export class Bsp_Demo extends Scene {
 
         // let there be trees
         this.create_trees(-20, 0, 0);
-
         this.create_trees(0, 0, 0);
-
         this.create_trees(20, 0, 0);
+
+        // bsp
+        this.bsp_line = new bsp.BSPLine(bsp.midpoint(vec3(0,0,0), vec3(2,0,0)), vec3(0,-1,0), 'line_a');
+        this.bsp_lseg = new bsp.BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0), 'lseg_a');
     }
 
     /**
@@ -136,6 +138,9 @@ export class Bsp_Demo extends Scene {
     make_control_panel() {
     }
 
+    render_bsp(context, program_state) {
+
+    }
 
     render_scene(context, program_state) {
         //
@@ -209,6 +214,9 @@ export class Bsp_Demo extends Scene {
 
         // Render scene
         this.render_scene(context, program_state);
+
+        // Render bsp
+        this.render_bsp(context, program_state);
     }
 
 }
