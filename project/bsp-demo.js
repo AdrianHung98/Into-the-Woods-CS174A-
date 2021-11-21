@@ -14,6 +14,8 @@ import {defs2} from './common-project.js';
 
 const {Cube2} = defs2;
 
+//import {BSPNode} from './bsp.js';
+
 // 2D shape, to display the texture buffer
 const Square =
     class Square extends tiny.Vertex_Buffer {
@@ -101,17 +103,17 @@ export class Bsp_Demo extends Scene {
         }
 
         // lookat(eye, at, up) , see Dis w3-c page 27
-        this.initial_camera_location = Mat4.look_at(vec3(0, 1, 20), vec3(0, 4, 0), vec3(0, 1, 0));
+        this.initial_camera_location = Mat4.look_at(vec3(0, 1, 25), vec3(0, 4, 0), vec3(0, 1, 0));
 
         // object list of trees
         this.trees = [];
 
         // let there be trees
-        this.create_trees(-5, 0, 0);
+        this.create_trees(-20, 0, 0);
 
-        this.create_trees(-15, 0, 0);
+        this.create_trees(0, 0, 0);
 
-        this.create_trees(10, 0, 0);
+        this.create_trees(20, 0, 0);
     }
 
     /**

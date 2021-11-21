@@ -1,5 +1,6 @@
 
-require('./tiny-graphics-copy.js');
+//require('./tiny-graphics-copy.js');
+import {tiny} from '../tiny-graphics.js';
 
 // Pull these names into this module's scope for convenience:
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
