@@ -1,7 +1,7 @@
 import {defs, tiny} from './../examples/common.js';
 // Pull these names into this module's scope for convenience:
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
-const {Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere} = defs
+const {Closed_Cone, Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere} = defs
 
 const {hex_color} = tiny;
 
@@ -63,6 +63,37 @@ const TreeShape0 =
         }
     }
 
+const LineWithNormalShape =
+    class LineWithNormalShape extends Shape {
+        constructor() {
+            super("position", "normal", "texture_coord");
+            this.line_u = 0.25;
+            this.draw_line();
+            this.draw_normal();
+        }
+
+        draw_line() {
+            Cube.insert_transformed_copy_into(this, [], Mat4.identity()
+                .times(Mat4.translation(0, 0, 0))
+                .times(Mat4.scale(10.0, this.line_u, this.line_u))
+            );
+        }
+
+        draw_normal() {
+            Cube.insert_transformed_copy_into(this, [], Mat4.identity()
+                .times(Mat4.translation(0, this.line_u*3, 0))         // 3. scale up by height
+                .times(Mat4.scale(this.line_u, this.line_u*3,  this.line_u))  // 2. scale
+                .times(Mat4.translation(0, this.line_u/2, 0))         // 1. shift from center at origin to bot at origin
+            );
+            Closed_Cone.insert_transformed_copy_into(this, [4, 10, [0,1]], Mat4.identity()
+                .times(Mat4.translation(0, this.line_u*7, 0))
+                .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
+                .times(Mat4.scale(.5, .5, .5))
+            );
+        }
+    }
+
+
 const Tree =
     class Tree {
         constructor(x, y, z) {
@@ -85,6 +116,7 @@ export class Bsp_Demo extends Scene {
             planet1: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
             cube: new Cube(),
             tree0: new TreeShape0(),
+            lwn: new LineWithNormalShape(),
         };
 
         // *** Materials
@@ -114,7 +146,7 @@ export class Bsp_Demo extends Scene {
         this.create_trees(20, 0, 0);
 
         // bsp
-        this.bsp_line = new bsp.BSPLine(bsp.midpoint(vec3(0,0,0), vec3(2,0,0)), vec3(0,-1,0), 'line_a');
+        this.bsp_line = new bsp.BSPLine(bsp.midpoint(vec3(0,0,0), vec3(2,10,0)), vec3(0,-1,0), 'line_a');
         this.bsp_lseg = new bsp.BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0), 'lseg_a');
     }
 
@@ -139,7 +171,13 @@ export class Bsp_Demo extends Scene {
     }
 
     render_bsp(context, program_state) {
+        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
+        this.light_color = color(1, 1, 1, 1);
+        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
 
+        let mt_bsp_line = Mat4.identity()
+            .times(Mat4.translation(this.bsp_line.p[0], this.bsp_line.p[1], this.bsp_line.p[2]));
+        this.shapes.lwn.draw(context, program_state, mt_bsp_line, this.materials.floor);
     }
 
     render_scene(context, program_state) {
