@@ -171,12 +171,24 @@ export class Bsp_Demo extends Scene {
     }
 
     render_bsp(context, program_state) {
-        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
-        this.light_color = color(1, 1, 1, 1);
-        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
+//        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
+//        this.light_color = color(1, 1, 1, 1);
+//        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
+
+//        n = this.bsp_line.n;
+//        p = this.bsp_line.p;
+//        pref =
+//        j = n;
+//        k = pref.minus(p);
+//        i = n.cross(k);
 
         let mt_bsp_line = Mat4.identity()
-            .times(Mat4.translation(this.bsp_line.p[0], this.bsp_line.p[1], this.bsp_line.p[2]));
+            .times(Mat4.translation(this.bsp_line.p[0], this.bsp_line.p[1], this.bsp_line.p[2]))
+//            .times(Mat4.rotation(Math.acos(this.bsp_line.n[0]),1,0,0))
+ //           .times(Mat4.rotation(Math.acos(this.bsp_line.n[1]),0,1,0))
+ //           .times(Mat4.rotation(Math.acos(this.bsp_line.n[2]),0,0,1))
+        ;
+
         this.shapes.lwn.draw(context, program_state, mt_bsp_line, this.materials.floor);
     }
 
