@@ -180,6 +180,9 @@ const BSPNode = bsp.BSPNode =
         push(polygon) {
             this.polygons.push(polygon);
         }
+        push_all(polygons) {
+            this.polygons = this.polygons.concat(polygons);
+        }
         toString() {
             let msg = '---->'.repeat(10) + '\n' + '***BSPNode***\n';
             if (this.polygons) msg += 'this.polygons:\n\t' + this.polygons.join('\n\t') + '\n';
@@ -196,12 +199,22 @@ const BSPDivider = bsp.BSPDivider =
         /**
          * Recursively subdivides using center of mass as next recursive call's hyperplane origin-position.
          */
-        constructor(min_objs=5) {
+        constructor(max_objs=5) {
             console.log('bsp divider constructor');
-            this.min_objs = min_objs;
+            this.max_objs = max_objs;
         }
 
         divide(node, depth=-1) {
+
+            //
+            // Base case:  a BSPNode is only a leaf if it has less polygons than the max per cell,
+            //         AND it does not have further sub-nodes (children).
+            //
+            if (node.polygons.length < this.max_objs && !node.front && !node.back) {
+                node.is_leaf = true;
+                return;
+            }
+
             let collinear = [], front = [], back = [];
             for (let polyg of node.polygons) {
                 if (! node.hyperplane) {
@@ -229,25 +242,30 @@ const BSPDivider = bsp.BSPDivider =
             }
             node.polygons = collinear;
 
-            node.front = new BSPNode(front, rotY(Math.PI/2, node.n));
-            node.back = new BSPNode(back, rotY(-Math.PI/2, node.n));
+            if (! node.front) {
+                node.front = new BSPNode(front, rotY(Math.PI/2, node.n));
+            }
+            else {
+                node.front.push_all(front);
+            }
+
+            if (! node.back) {
+                node.back = new BSPNode(back, rotY(-Math.PI/2, node.n));
+            }
+            else {
+                node.front.push_all(back);
+            }
+
+            // only decrease depth if polygons were actually separated out
+            if (front.length > 0 || back.length > 0) {
+                depth -= 1;
+                console.log("decreased depth: " + depth);
+            }
 
             if (depth == 0) return;
 
-            if (front.length < this.min_objs) {
-                node.front.is_leaf = true;
-            }
-            if (back.length < this.min_objs) {
-                node.back.is_leaf = true;
-            }
-            console.log(front.length);
-
-            if (! node.front.is_leaf) {
-                this.divide(node.front, depth-1);
-            }
-            if (! node.back.is_leaf) {
-                this.divide(node.back, depth-1);
-            }
+            this.divide(node.front, depth);
+            this.divide(node.back, depth);
         }
     }
 
