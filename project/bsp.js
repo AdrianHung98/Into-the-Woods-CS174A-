@@ -52,6 +52,11 @@ const dot = bsp.dot =
         return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
     }
 
+const rotY = bsp.rot =
+    function (rads, v) {
+        return Mat4.rotation(rads, 0, 1, 0).times(vec4(v[0], v[1], v[2], 0));
+    }
+
 const whichSide_point = bsp.whichSide_point =
     function (bsp_line, p1) {
         let dp = dot(sub3(p1, bsp_line.p), bsp_line.n);
@@ -122,9 +127,25 @@ const BSPLine = bsp.BSPLine =
 
 const BSPNode = bsp.BSPNode =
     class BSPNode {
-        constructor(polygons=[]) {
+        constructor(polygons, normal) {
             console.log('creating bsp node');
             this.polygons = polygons;
+            this.n = normal;
+
+            let center = this.find_center(polygons);
+            this.hyperplane = new BSPLine(center, normal);
+        }
+        find_center(objs) {
+            if (objs.length == 0) return vec3(0, 0, 0);
+
+            let tot_x = 0, tot_y = 0, tot_z = 0;
+            for (let obj of objs) {
+                tot_x += obj.p[0];
+                tot_y += obj.p[1];
+                tot_z += obj.p[2];
+            }
+            let n = objs.length;
+            return vec3(tot_x/n, tot_y/n, tot_z/n);
         }
         push(polygon) {
             this.polygons.push(polygon);
@@ -143,10 +164,11 @@ const BSPNode = bsp.BSPNode =
 const BSPDivider = bsp.BSPDivider =
     class BSPDivider {
         /**
-         * Recursively subdivides all polygons.
+         * Recursively subdivides using center of mass as next recursive call's hyperplane origin-position.
          */
-        constructor() {
+        constructor(min_objs=5) {
             console.log('bsp divider constructor');
+            this.min_objs = min_objs;
         }
 
         divide(node, depth=-1) {
@@ -155,6 +177,7 @@ const BSPDivider = bsp.BSPDivider =
                 if (! node.hyperplane) {
                     // uses the first polyg encountered in node.polygons as the hyperplane
                     node.hyperplane = new BSPLine(polyg.p, polyg.n, polyg.tag+'.hypp'); // TODO: assumes every polygon has a .p (center) and .n
+
                 }
 
                 let side = whichSide_lseg(node.hyperplane, polyg);
@@ -172,15 +195,28 @@ const BSPDivider = bsp.BSPDivider =
             }
             node.polygons = collinear;
 
-            node.front = new BSPNode(front);
-            node.back = new BSPNode(back);
+            node.front = new BSPNode(front, rotY(Math.PI/2, node.n));
+            node.back = new BSPNode(back, rotY(-Math.PI/2, node.n));
 
             if (depth == 0) return;
 
-            this.divide(node.front, depth-1);
-            this.divide(node.back, depth-1);
+            if (front.length < this.min_objs) {
+                node.front.is_leaf = true;
+            }
+            if (back.length < this.min_objs) {
+                node.back.is_leaf = true;
+            }
+            console.log(front.length);
+
+            if (! node.front.is_leaf) {
+                this.divide(node.front, depth-1);
+            }
+            if (! node.back.is_leaf) {
+                this.divide(node.back, depth-1);
+            }
         }
     }
+
 
 
 //
@@ -236,9 +272,9 @@ console.log(whichSide_lseg(bsp_line_a, lseg_a3));
 // Test BSPNode and BSPDivider
 //
 
-let bsp_divider = new BSPDivider();
+let bsp_divider = new BSPDivider(3);
 
-let a = new BSPNode();
+let a = new BSPNode([], vec(-1,0,0));
 a.push(lseg_a);
 a.push(lseg_b);
 a.push(lseg_c);
@@ -246,7 +282,11 @@ a.push(lseg_d);
 
 console.log(''+a);
 
-bsp_divider.divide(a, 1);
+bsp_divider.divide(a, -1);
 
 console.log(''+a);
+
+//bsp_divider.divide(a, -1);
+//
+//console.log(''+a);
 

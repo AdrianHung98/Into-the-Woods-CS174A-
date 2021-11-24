@@ -96,9 +96,14 @@ const LineWithNormalShape =
 
 const Tree =
     class Tree {
-        constructor(x, y, z) {
+        constructor(x, y, z, tag='') {
             //console.log('creating tree: x: ' + x + ', y: ' + y + ', z: ' + z);
-            this.pos = vec3(x, y, z);
+            this.p = vec3(x, y, z);
+            this.tag = tag;
+        }
+        toString() {
+            let msg = '{tree ' + this.tag + ': p: [' + this.p[0] + ', ' + this.p[1] + ', ' + this.p[2] + ']}';
+            return msg;
         }
     }
 
@@ -140,14 +145,23 @@ export class Bsp_Demo extends Scene {
         // object list of trees
         this.trees = [];
 
+        this.TREE_ID = 0;
+
         // let there be trees
         this.create_trees(-20, 0, 0);
         this.create_trees(0, 0, 0);
         this.create_trees(20, 0, 0);
 
         // bsp
-        this.bsp_line = new bsp.BSPLine(bsp.midpoint(vec3(0,0,0), vec3(2,10,0)), vec3(0,-1,0), 'line_a');
-        this.bsp_lseg = new bsp.BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0), 'lseg_a');
+        //this.bsp_line = new bsp.BSPLine(bsp.midpoint(vec3(0,0,0), vec3(2,10,0)), vec3(0,-1,0), 'line_a');
+        //this.bsp_lseg = new bsp.BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0), 'lseg_a');
+        this.bsp_root = new bsp.BSPNode();
+        this.bsp_divider = new bsp.BSPDivider();
+
+        for (let tree of this.trees) {
+            this.bsp_root.push(tree);
+        }
+        console.log(''+this.bsp_root);
     }
 
     /**
@@ -162,12 +176,19 @@ export class Bsp_Demo extends Scene {
         let TREE_SP_Z = 1.0;
         for (let i = 0; i < n; i++) {
             for (let j = 0; j < m; j++) {
-                this.trees.push(new Tree(x+i*(2*TREE_W+TREE_SP_X), y, z+j*(2*TREE_D+TREE_SP_Z)));
+                this.trees.push(new Tree(x+i*(2*TREE_W+TREE_SP_X), y, z+j*(2*TREE_D+TREE_SP_Z), this.TREE_ID));
+                this.TREE_ID += 1;
             }
         }
     }
 
+    split_bsp() {
+        this.bsp_divider.divide(this.bsp_root, 1);
+        console.log('' + this.bsp_root);
+    }
+
     make_control_panel() {
+        this.key_triggered_button("Split BSP once", ["b"], this.split_bsp);
     }
 
     render_bsp(context, program_state) {
@@ -243,7 +264,7 @@ export class Bsp_Demo extends Scene {
         // draw trees
         for (let tree of this.trees) {
             let mt_tree = Mat4.identity().times(
-                Mat4.translation(tree.pos[0], tree.pos[1], tree.pos[2]));
+                Mat4.translation(tree.p[0], tree.p[1], tree.p[2]));
             this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.floor);
         }
     }
@@ -266,7 +287,7 @@ export class Bsp_Demo extends Scene {
         this.render_scene(context, program_state);
 
         // Render bsp
-        this.render_bsp(context, program_state);
+//        this.render_bsp(context, program_state);
     }
 
 }
