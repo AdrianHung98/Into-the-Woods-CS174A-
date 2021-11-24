@@ -97,6 +97,48 @@ const split_lseg = bsp.split_lseg =
         return [lseg1, lseg2];
     }
 
+const split_obj = bsp.split_obj =
+    function (hyperplane, obj) {
+        //
+        // Instead of actually splitting an object, we test which side of the hyperplane that the object's center point
+        //    (however it is defined by the class creator) is on.
+        //
+        let side = whichSide_point(hyperplane, obj.p);
+        if (side == "front") {
+            return [obj, null];
+        }
+        else {
+            return [null, obj];
+        }
+    }
+
+const split = bsp.split =
+    function (hyperplane, obj) {
+        if (obj.constructor.name == "BSPLine") {
+            // unsupported
+        }
+        else if (obj.constructor.name == "BSPLineSegment") {
+            return split_lseg(hyperplane, obj);
+        }
+        else {
+            return split_obj(hyperplane, obj);
+        }
+    }
+
+const find_center = bsp.find_center =
+    function (objs) {
+            if (objs.length == 0) return vec3(0, 0, 0);
+
+            let tot_x = 0, tot_y = 0, tot_z = 0;
+            for (let obj of objs) {
+                tot_x += obj.p[0];
+                tot_y += obj.p[1];
+                tot_z += obj.p[2];
+            }
+            let n = objs.length;
+            return vec3(tot_x/n, tot_y/n, tot_z/n);
+        }
+
 const BSPLineSegment = bsp.BSPLineSegment =
     class BSPLineSegment {
         constructor(p1, p2, n, tag='') {
@@ -132,20 +174,8 @@ const BSPNode = bsp.BSPNode =
             this.polygons = polygons;
             this.n = normal;
 
-            let center = this.find_center(polygons);
+            let center = find_center(polygons);
             this.hyperplane = new BSPLine(center, normal);
-        }
-        find_center(objs) {
-            if (objs.length == 0) return vec3(0, 0, 0);
-
-            let tot_x = 0, tot_y = 0, tot_z = 0;
-            for (let obj of objs) {
-                tot_x += obj.p[0];
-                tot_y += obj.p[1];
-                tot_z += obj.p[2];
-            }
-            let n = objs.length;
-            return vec3(tot_x/n, tot_y/n, tot_z/n);
         }
         push(polygon) {
             this.polygons.push(polygon);
@@ -175,7 +205,7 @@ const BSPDivider = bsp.BSPDivider =
             let collinear = [], front = [], back = [];
             for (let polyg of node.polygons) {
                 if (! node.hyperplane) {
-                    // uses the first polyg encountered in node.polygons as the hyperplane
+                    // if the node has no hyperplane, uses the first polyg encountered in node.polygons as the hyperplane
                     node.hyperplane = new BSPLine(polyg.p, polyg.n, polyg.tag+'.hypp'); // TODO: assumes every polygon has a .p (center) and .n
 
                 }
@@ -187,10 +217,14 @@ const BSPDivider = bsp.BSPDivider =
                 else if (side == "back") back.push(polyg);
                 else if (side == "collinear") collinear.push(polyg);
                 else if (side == "both") {
-                    let [polyg_front, polyg_back] = split_lseg(node.hyperplane, polyg);
+                    let [polyg_front, polyg_back] = split(node.hyperplane, polyg);
                     console.log('polyg_front: ' + polyg_front + ', polyg_back: ' + polyg_back);
-                    front.push(polyg_front);
-                    back.push(polyg_back);
+                    if (polyg_front) {
+                        front.push(polyg_front);
+                    }
+                    if (polyg_back) {
+                        back.push(polyg_back);
+                    }
                 }
             }
             node.polygons = collinear;

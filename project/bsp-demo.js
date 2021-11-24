@@ -100,6 +100,10 @@ const Tree =
             //console.log('creating tree: x: ' + x + ', y: ' + y + ', z: ' + z);
             this.p = vec3(x, y, z);
             this.tag = tag;
+
+            // add p1, p2 for whichSide_lseg support
+            this.p1 = vec3(this.p[0]-0.25, this.p[1], this.p[2]);
+            this.p2 = vec3(this.p[0]+0.25, this.p[1], this.p[2]);
         }
         toString() {
             let msg = '{tree ' + this.tag + ': p: [' + this.p[0] + ', ' + this.p[1] + ', ' + this.p[2] + ']}';
@@ -155,7 +159,7 @@ export class Bsp_Demo extends Scene {
         // bsp
         //this.bsp_line = new bsp.BSPLine(bsp.midpoint(vec3(0,0,0), vec3(2,10,0)), vec3(0,-1,0), 'line_a');
         //this.bsp_lseg = new bsp.BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0), 'lseg_a');
-        this.bsp_root = new bsp.BSPNode();
+        this.bsp_root = new bsp.BSPNode([], vec3(-1,0,0));
         this.bsp_divider = new bsp.BSPDivider();
 
         for (let tree of this.trees) {
