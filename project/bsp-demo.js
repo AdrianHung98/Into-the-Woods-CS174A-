@@ -111,6 +111,104 @@ const Tree =
         }
     }
 
+const Camera =
+    class Camera {
+        //
+        // The three params to Mat4.lookat are passed in; note that all three are points, NOT vectors.
+        // That is, the lookat param is the lookat point, not the lookat vector.
+        //
+        // eye:  point, lookat: point, up: point
+        //
+        constructor(eye, lookat_point, up, tag) {
+            this.eye = eye;
+            this.initial_lookat = lookat_point.minus(eye);  // calculate the lookat vector
+            this.up = up;
+            this.tag = tag;
+
+            // this.rotY:  the initial rotation about the Y axis is tan^-1(z/x)
+            if (this.initial_lookat[0] < 1e-3) {
+                this.rotY = this.initial_lookat[2] >= 0 ? Math.PI/2 : -Math.PI/2;
+            }
+            else {
+                this.rotY = Math.atan(this.initial_lookat[2]/this.initial_lookat[0]);
+            }
+
+            console.log('camera constructor: rotY: ' + this.rotY);
+            console.log('camera constructor: intial_lookat: ' + this.initial_lookat);
+
+            this.rollY = 0;   // how much to roll (add-to) rotY
+            this.thrust = vec3(0, 0, 0);
+            this.meters_per_frame = 0.5;
+            this.radians_per_frame = 1 / 200;
+
+            this._matrix = Mat4.look_at(this.eye, this.lookat, this.up);
+        }
+        matrix() {
+            this.rotY += this.rollY;
+            console.log('camera.matrix(): rotY: ' + this.rotY + ', rollY: ' + this.rollY);
+
+            console.log('camera.matrix(): this.thrust: ' + this.thrust);
+            let dpos = this.thrust.times(-this.meters_per_frame);
+            let dx = dpos * Math.cos(this.rollY);
+            let dz = dpos * Math.sin(this.rollY);
+            console.log('camera.matrix(): dpos: ' + dpos + ', dx: ' + dx + ', dz: ' + dz);
+
+            this.eye = this.eye.plus(dx, 0, dz);
+            console.log("camera.matrix(): this.eye: " + this.eye[0] + ', ' + this.eye[1] + ', ' + this.eye[2]);
+            this._matrix.set(Mat4.look_at(this.eye, this.lookat, this.up));
+            return this._matrix;
+        }
+        inverse() {
+            return Mat4.inverse(this._matrix);
+        }
+        start_forward() {
+            this.thrust[2] = 1;
+        }
+        stop_forward() {
+            this.thrust[2] = 0;
+        }
+        start_backward() {
+            this.thrust[2] = -1;
+        }
+        stop_backward() {
+            this.thrust[2] = 0;
+        }
+        start_strafe_left() {
+            this.thrust[0] = 1;
+        }
+        stop_strafe_left() {
+            this.thrust[0] = 0;
+        }
+        start_strafe_right() {
+            this.thrust[0] = -1;
+        }
+        stop_strafe_right() {
+            this.thrust[0] = 0;
+        }
+        start_rot_left() {
+            this.rollY = -1;
+        }
+        stop_rot_left() {
+            this.rollY = 0;
+        }
+        start_rot_right() {
+            this.rollY = 1;
+        }
+        stop_rot_right() {
+            this.rollY = 0;
+        }
+        toString() {
+            let msg = '{camera' + this.tag +
+                ': eye: [' + this.eye[0] + ', ' + this.eye[1] + ', ' + this.eye[2] +
+                '; lookat: [' + this.lookat[0] + ', ' + this.lookat[1] + ', ' + this.lookat[2] +
+                '; up: [' + this.up[0] + ', ' + this.up[1] + ', ' + this.up[2] +
+                '; thrust: [' + this.thrust[0] + ', ' + this.thrust[1] + ', ' + this.thrust[2] +
+                '; rollY: [' + this.rollY +
+                ']}';
+            return msg;
+        }
+    }
+
 // The scene
 export class Bsp_Demo extends Scene {
     constructor() {
@@ -144,7 +242,11 @@ export class Bsp_Demo extends Scene {
         }
 
         // lookat(eye, at, up) , see Dis w3-c page 27
-        this.initial_camera_location = Mat4.look_at(vec3(0, 1, 25), vec3(0, 4, 0), vec3(0, 1, 0));
+        this.global_camera_location = Mat4.look_at(vec3(0, 1, 25), vec3(0, 4, 0), vec3(0, 1, 0));
+
+        this.switch_camera = false;
+        this.cur_camera = 0;
+        this.camera = new Camera(vec3(0, 1, 15), vec3(0, 4, 0), vec3(0, 1, 0));
 
         // object list of trees
         this.trees = [];
@@ -157,10 +259,10 @@ export class Bsp_Demo extends Scene {
         this.create_trees(20, 0, 0);
 
         // bsp
-        //this.bsp_line = new bsp.BSPLine(bsp.midpoint(vec3(0,0,0), vec3(2,10,0)), vec3(0,-1,0), 'line_a');
-        //this.bsp_lseg = new bsp.BSPLineSegment(vec3(0,0,0), vec3(2,0,0), vec3(0,-1,0), 'lseg_a');
+        this.bsp_on = false;
         this.bsp_root = new bsp.BSPNode([], vec3(-1,0,0));
         this.bsp_divider = new bsp.BSPDivider();
+        this.bsp_query = new bsp.BSPQuery();
 
         for (let tree of this.trees) {
             this.bsp_root.push(tree);
@@ -191,30 +293,74 @@ export class Bsp_Demo extends Scene {
         console.log('' + this.bsp_root);
     }
 
+    toggle_bsp() {
+        this.bsp_on = ! this.bsp_on;
+    }
+
+    get_camera_pos(program_state) {
+        let cam_tr = program_state.camera_transform;
+        return vec3(cam_tr[0][3], cam_tr[1][3], cam_tr[2][3]);
+    }
+
+    get_camera_lookat(program_state) {
+        console.log(program_state.camera_transform);
+    }
+
+    next_camera() {
+        this.switch_camera = true;
+        this.cur_camera = (this.cur_camera+1) % 2;
+        console.log('cur_camera: ' + this.cur_camera);
+    }
+
+    camera_func_call(func) {
+        return () => {
+            if (this.cur_camera != 0) {
+                this.camera[func]();
+            }
+        };
+    }
+
+    cur_camera_name() {
+        if (this.cur_camera == 0) return 'GLOBAL';
+        else if (this.cur_camera == 1) return 'LOCAL';
+        else return '<error>';
+    }
+
     make_control_panel() {
-        this.key_triggered_button("Split BSP once", ["b"], this.split_bsp);
+        let anon = () => this.format_camera_idx();
+
+        this.key_triggered_button("Toggle BSP mode", ["b"], this.toggle_bsp);
+        this.key_triggered_button("Split BSP once", ["n"], this.split_bsp);
+        this.new_line();
+        this.new_line();
+        this.control_panel.innerHTML += "Click to cycle between global and player camera.<br>";
+        this.key_triggered_button("Switch cameras", ["t"], this.next_camera);
+        this.live_string(box => box.textContent = "- Current camera: " + this.cur_camera_name());
+        this.new_line();
+        this.new_line();
+        this.key_triggered_button("Move forward", ["i"],
+            this.camera_func_call('start_forward'), undefined, this.camera_func_call('stop_forward'));
+        this.key_triggered_button("Move backward", ["k"],
+            this.camera_func_call('start_backward'), undefined, this.camera_func_call('stop_backward'));
+        this.new_line();
+        this.key_triggered_button("Strafe left", ["h"],
+            this.camera_func_call('start_strafe_left'), undefined, this.camera_func_call('stop_strafe_left'));
+        this.key_triggered_button("Strafe right", ["l"],
+            this.camera_func_call('start_strafe_right', undefined, this.camera_func_call('stop_strafe_right')));
+        this.new_line();
+        this.key_triggered_button("Rotate left", ["q"],
+            this.camera_func_call('start_rot_left'), undefined, this.camera_func_call('stop_rot_left'));
+        this.key_triggered_button("Rotate right", ["e"],
+            this.camera_func_call('start_rot_right'), undefined, this.camera_func_call('stop_rot_right'));
     }
 
     render_bsp(context, program_state) {
-//        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
-//        this.light_color = color(1, 1, 1, 1);
-//        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
-
-//        n = this.bsp_line.n;
-//        p = this.bsp_line.p;
-//        pref =
-//        j = n;
-//        k = pref.minus(p);
-//        i = n.cross(k);
-
-        let mt_bsp_line = Mat4.identity()
-            .times(Mat4.translation(this.bsp_line.p[0], this.bsp_line.p[1], this.bsp_line.p[2]))
-//            .times(Mat4.rotation(Math.acos(this.bsp_line.n[0]),1,0,0))
- //           .times(Mat4.rotation(Math.acos(this.bsp_line.n[1]),0,1,0))
- //           .times(Mat4.rotation(Math.acos(this.bsp_line.n[2]),0,0,1))
-        ;
-
-        this.shapes.lwn.draw(context, program_state, mt_bsp_line, this.materials.floor);
+        let camera_pos = this.get_camera_pos(program_state);
+        console.log('camera_pos: ' + camera_pos);
+        let camera_lookat = this.get_camera_lookat(program_state);
+        console.log('camera_lookat: ' + camera_lookat);
+        let in_front = this.bsp_query.in_front_of(this.bsp_root, camera_pos, vec3(0,0,-1));
+        console.log('in front length: ' + in_front.length);
     }
 
     render_scene(context, program_state) {
@@ -266,10 +412,15 @@ export class Bsp_Demo extends Scene {
 
 
         // draw trees
-        for (let tree of this.trees) {
-            let mt_tree = Mat4.identity().times(
-                Mat4.translation(tree.p[0], tree.p[1], tree.p[2]));
-            this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.floor);
+        if (this.bsp_on) {
+            this.render_bsp(context, program_state);
+        }
+        else {
+            for (let tree of this.trees) {
+                let mt_tree = Mat4.identity().times(
+                    Mat4.translation(tree.p[0], tree.p[1], tree.p[2]));
+                this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.floor);
+            }
         }
     }
 
@@ -280,7 +431,27 @@ export class Bsp_Demo extends Scene {
         if (!context.scratchpad.controls) {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             // Define the global camera and projection matrices, which are stored in program_state.
-            program_state.set_camera(this.initial_camera_location);
+            program_state.set_camera(this.global_camera_location);
+        }
+
+        if (this.switch_camera) {
+            this._prev_camera_transform = context.scratchpad.controls.inverse();
+            console.log('prev camera transform');
+            console.log(this._prev_camera_transform);
+            if (this.cur_camera == 1) {
+                program_state.set_camera(this.camera.matrix());
+            }
+            else {
+                if (context.scratchpad.controls.matrix) {
+                    // common.js Movement_Controls applies a closure to modify the matrix, so this is saved here:
+                    program_state.set_camera(this.global_camera_location);
+                }
+            }
+            this.switch_camera = false;
+        }
+
+        if (this.cur_camera == 1) {
+            program_state.set_camera(this.camera.matrix());
         }
 
         program_state.projection_transform = Mat4.perspective(

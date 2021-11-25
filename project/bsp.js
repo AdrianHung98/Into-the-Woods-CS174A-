@@ -174,8 +174,8 @@ const BSPNode = bsp.BSPNode =
             this.polygons = polygons;
             this.n = normal;
 
-            let center = find_center(polygons);
-            this.hyperplane = new BSPLine(center, normal);
+            this.center = find_center(polygons);
+            this.hyperplane = new BSPLine(this.center, normal);
         }
         push(polygon) {
             this.polygons.push(polygon);
@@ -270,6 +270,30 @@ const BSPDivider = bsp.BSPDivider =
     }
 
 
+const BSPQuery = bsp.BSPQuery =
+    class BSPQuery {
+        constructor() {
+        }
+
+        //
+        // Returns all cells in the bsp that are in front of the given {point, direction}.
+        //
+        in_front_of(node, point, dir) {
+            let cells = node.polygons;
+
+//            console.log('in_front_of: bsp_root.center: ' + node.center);
+//            console.log('point: ' + point + ', dir: ' + dir);
+            let side = whichSide_point({p: point, n: dir}, node.center);
+            if (side == "front" && node.front) {
+                cells = cells.concat(this.in_front_of(node.front, point, dir));
+            }
+            else if (side == "back" && bsp_root.back) {
+                cells = cells.concat(this.in_front_of(node.back, point, dir));
+            }
+
+            return cells;
+        }
+    }
 
 //
 // Test lines and whichSide_point
