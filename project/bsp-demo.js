@@ -117,85 +117,52 @@ const Camera =
         // The three params to Mat4.lookat are passed in; note that all three are points, NOT vectors.
         // That is, the lookat param is the lookat point, not the lookat vector.
         //
-        // eye:  point, lookat: point, up: point
+        // Thus, our camera parameters are the eye, the direction vector (lookat *vector*), and up vector
         //
-        constructor(eye, lookat_point, up, tag) {
+        // eye: point
+        // front: vector
+        // up: vector
+        //
+        constructor(eye, front, up, tag) {
             this.eye = eye;
-            this.initial_lookat = lookat_point.minus(eye);  // calculate the lookat vector
+            this.front = front;
             this.up = up;
             this.tag = tag;
 
-            // this.rotY:  the initial rotation about the Y axis is tan^-1(z/x)
-            if (this.initial_lookat[0] < 1e-3) {
-                this.rotY = this.initial_lookat[2] >= 0 ? Math.PI/2 : -Math.PI/2;
-            }
-            else {
-                this.rotY = Math.atan(this.initial_lookat[2]/this.initial_lookat[0]);
-            }
-
-            console.log('camera constructor: rotY: ' + this.rotY);
-            console.log('camera constructor: intial_lookat: ' + this.initial_lookat);
-
-            this.rollY = 0;   // how much to roll (add-to) rotY
-            this.thrust = vec3(0, 0, 0);
-            this.meters_per_frame = 0.5;
-            this.radians_per_frame = 1 / 200;
-
-            this._matrix = Mat4.look_at(this.eye, this.lookat, this.up);
+            this._matrix = Mat4.look_at(this.eye, this.eye.plus(this.front), this.up);
         }
         matrix() {
-            this.rotY += this.rollY;
-            console.log('camera.matrix(): rotY: ' + this.rotY + ', rollY: ' + this.rollY);
-
-            console.log('camera.matrix(): this.thrust: ' + this.thrust);
-            let dpos = this.thrust.times(-this.meters_per_frame);
-            let dx = dpos * Math.cos(this.rollY);
-            let dz = dpos * Math.sin(this.rollY);
-            console.log('camera.matrix(): dpos: ' + dpos + ', dx: ' + dx + ', dz: ' + dz);
-
-            this.eye = this.eye.plus(dx, 0, dz);
             console.log("camera.matrix(): this.eye: " + this.eye[0] + ', ' + this.eye[1] + ', ' + this.eye[2]);
-            this._matrix.set(Mat4.look_at(this.eye, this.lookat, this.up));
+            this._matrix.set(Mat4.look_at(this.eye, this.eye.plus(this.front), this.up));
             return this._matrix;
         }
         inverse() {
             return Mat4.inverse(this._matrix);
         }
-        start_forward() {
-            this.thrust[2] = 1;
+        forward() {
+            console.log('my custom forward');
+            this.eye = this.eye.plus(
+                this.front
+            );
         }
-        stop_forward() {
-            this.thrust[2] = 0;
+        backward() {
+            this.eye = this.eye.minus(
+                this.front
+            );
         }
-        start_backward() {
-            this.thrust[2] = -1;
+        strafe_left() {
+            this.eye = this.eye.minus(
+                this.front.cross(this.up).normalized()
+            );
         }
-        stop_backward() {
-            this.thrust[2] = 0;
+        strafe_right() {
+            this.eye = this.eye.plus(
+                this.front.cross(this.up).normalized()
+            );
         }
-        start_strafe_left() {
-            this.thrust[0] = 1;
+        rot_left() {
         }
-        stop_strafe_left() {
-            this.thrust[0] = 0;
-        }
-        start_strafe_right() {
-            this.thrust[0] = -1;
-        }
-        stop_strafe_right() {
-            this.thrust[0] = 0;
-        }
-        start_rot_left() {
-            this.rollY = -1;
-        }
-        stop_rot_left() {
-            this.rollY = 0;
-        }
-        start_rot_right() {
-            this.rollY = 1;
-        }
-        stop_rot_right() {
-            this.rollY = 0;
+        rot_right() {
         }
         toString() {
             let msg = '{camera' + this.tag +
@@ -246,7 +213,7 @@ export class Bsp_Demo extends Scene {
 
         this.switch_camera = false;
         this.cur_camera = 0;
-        this.camera = new Camera(vec3(0, 1, 15), vec3(0, 4, 0), vec3(0, 1, 0));
+        this.camera = new Camera(vec3(0, 1, 15), vec3(0, 0, -1), vec3(0, 1, 0));
 
         // object list of trees
         this.trees = [];
@@ -338,20 +305,14 @@ export class Bsp_Demo extends Scene {
         this.live_string(box => box.textContent = "- Current camera: " + this.cur_camera_name());
         this.new_line();
         this.new_line();
-        this.key_triggered_button("Move forward", ["i"],
-            this.camera_func_call('start_forward'), undefined, this.camera_func_call('stop_forward'));
-        this.key_triggered_button("Move backward", ["k"],
-            this.camera_func_call('start_backward'), undefined, this.camera_func_call('stop_backward'));
+        this.key_triggered_button("Move forward", ["i"], this.camera_func_call('forward'));
+        this.key_triggered_button("Move backward", ["k"], this.camera_func_call('backward'));
         this.new_line();
-        this.key_triggered_button("Strafe left", ["h"],
-            this.camera_func_call('start_strafe_left'), undefined, this.camera_func_call('stop_strafe_left'));
-        this.key_triggered_button("Strafe right", ["l"],
-            this.camera_func_call('start_strafe_right', undefined, this.camera_func_call('stop_strafe_right')));
+        this.key_triggered_button("Strafe left", ["j"], this.camera_func_call('strafe_left'));
+        this.key_triggered_button("Strafe right", ["l"], this.camera_func_call('strafe_right'));
         this.new_line();
-        this.key_triggered_button("Rotate left", ["q"],
-            this.camera_func_call('start_rot_left'), undefined, this.camera_func_call('stop_rot_left'));
-        this.key_triggered_button("Rotate right", ["e"],
-            this.camera_func_call('start_rot_right'), undefined, this.camera_func_call('stop_rot_right'));
+        this.key_triggered_button("Rotate left", ["q"], this.camera_func_call('rot_left'));
+        this.key_triggered_button("Rotate right", ["e"], this.camera_func_call('rot_right'));
     }
 
     render_bsp(context, program_state) {
