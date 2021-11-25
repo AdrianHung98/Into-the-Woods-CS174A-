@@ -114,25 +114,29 @@ const Tree =
 const Camera =
     class Camera {
         //
-        // The three params to Mat4.lookat are passed in; note that all three are points, NOT vectors.
-        // That is, the lookat param is the lookat point, not the lookat vector.
+        // Note that the three params to Mat4.lookat are are points, NOT vectors.
+        // ie, 'lookat' is the lookat point in WS, not an actual direction vector.
         //
-        // Thus, our camera parameters are the eye, the direction vector (lookat *vector*), and up vector
+        // This camera trakcs its own position (eye), direction vector (front) = lookat_point - eye, and up vector.
         //
         // eye: point
         // front: vector
         // up: vector
         //
-        constructor(eye, front, up, tag) {
+        constructor(eye, yaw, pitch, up, tag) {
             this.eye = eye;
-            this.front = front;
             this.up = up;
             this.tag = tag;
+
+            this.yaw = yaw;
+            this.pitch = pitch;
+
+            this.update_eulers();
 
             this._matrix = Mat4.look_at(this.eye, this.eye.plus(this.front), this.up);
         }
         matrix() {
-            console.log("camera.matrix(): this.eye: " + this.eye[0] + ', ' + this.eye[1] + ', ' + this.eye[2]);
+//            console.log("camera.matrix(): this.eye: " + this.eye[0] + ', ' + this.eye[1] + ', ' + this.eye[2]);
             this._matrix.set(Mat4.look_at(this.eye, this.eye.plus(this.front), this.up));
             return this._matrix;
         }
@@ -141,13 +145,19 @@ const Camera =
         }
         forward() {
             console.log('my custom forward');
-            this.eye = this.eye.plus(
-                this.front
+            // this.eye = this.eye.plus( this.front );  // this changes y as well
+            this.eye = vec3(
+                this.eye[0] + this.front[0],
+                this.eye[1],
+                this.eye[2] + this.front[2]
             );
         }
         backward() {
-            this.eye = this.eye.minus(
-                this.front
+            // this.eye = this.eye.minus( this.front ); // this changes y as well
+            this.eye = vec3(
+                this.eye[0] - this.front[0],
+                this.eye[1],
+                this.eye[2] - this.front[2]
             );
         }
         strafe_left() {
@@ -160,9 +170,29 @@ const Camera =
                 this.front.cross(this.up).normalized()
             );
         }
+        update_eulers() {
+            let dir = vec3(
+                Math.cos(this.yaw) * Math.cos(this.pitch),
+                Math.sin(this.pitch),
+                Math.sin(this.yaw) * Math.cos(this.pitch)
+            );
+            this.front = dir.normalized();
+        }
         rot_left() {
+            this.yaw -= 0.1;
+            this.update_eulers();
         }
         rot_right() {
+            this.yaw += 0.1;
+            this.update_eulers();
+        }
+        rot_up() {
+            this.pitch += 0.1;
+            this.update_eulers();
+        }
+        rot_down() {
+            this.pitch -= 0.1;
+            this.update_eulers();
         }
         toString() {
             let msg = '{camera' + this.tag +
@@ -213,7 +243,7 @@ export class Bsp_Demo extends Scene {
 
         this.switch_camera = false;
         this.cur_camera = 0;
-        this.camera = new Camera(vec3(0, 1, 15), vec3(0, 0, -1), vec3(0, 1, 0));
+        this.camera = new Camera(vec3(0, 1, 15), -Math.PI/2, 0, vec3(0, 1, 0));
 
         // object list of trees
         this.trees = [];
@@ -313,6 +343,9 @@ export class Bsp_Demo extends Scene {
         this.new_line();
         this.key_triggered_button("Rotate left", ["q"], this.camera_func_call('rot_left'));
         this.key_triggered_button("Rotate right", ["e"], this.camera_func_call('rot_right'));
+        this.new_line();
+        this.key_triggered_button("Rotate up", ["y"], this.camera_func_call('rot_up'));
+        this.key_triggered_button("Rotate down", ["h"], this.camera_func_call('rot_down'));
     }
 
     render_bsp(context, program_state) {
