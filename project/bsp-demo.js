@@ -1,7 +1,7 @@
 import {defs, tiny} from './../examples/common.js';
 // Pull these names into this module's scope for convenience:
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
-const {Closed_Cone, Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere} = defs
+const {Capped_Cylinder, Closed_Cone, Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere} = defs
 
 const {hex_color} = tiny;
 
@@ -63,32 +63,45 @@ const TreeShape0 =
         }
     }
 
-const LineWithNormalShape =
-    class LineWithNormalShape extends Shape {
+const ArrowShape =
+    class ArrowShape extends Shape {
         constructor() {
             super("position", "normal", "texture_coord");
             this.line_u = 0.25;
-            this.draw_line();
             this.draw_normal();
         }
 
-        draw_line() {
-            Cube.insert_transformed_copy_into(this, [], Mat4.identity()
+        draw_normal() {
+            Capped_Cylinder.insert_transformed_copy_into(this, [4, 10, [0,1]], Mat4.identity()
+                .times(Mat4.rotation(Math.PI/2, 1, 0, 0))
+                .times(Mat4.scale(0.1, 0.1, 2.0))
+            );
+            Closed_Cone.insert_transformed_copy_into(this, [4, 10, [0,1]], Mat4.identity()
+                .times(Mat4.translation(0, 1.0, 0))
+                .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
+                .times(Mat4.scale(.3, .3, .3))
+            );
+        }
+    }
+
+const CameraShape =
+    class CameraShape extends Shape {
+        constructor() {
+            super("position", "normal", "texture_coord");
+            this.draw_body();
+            this.draw_dir();
+        }
+
+        draw_body() {
+            TreeShape0.insert_transformed_copy_into(this, [], Mat4.identity()
                 .times(Mat4.translation(0, 0, 0))
-                .times(Mat4.scale(10.0, this.line_u, this.line_u))
             );
         }
 
-        draw_normal() {
-            Cube.insert_transformed_copy_into(this, [], Mat4.identity()
-                .times(Mat4.translation(0, this.line_u*3, 0))         // 3. scale up by height
-                .times(Mat4.scale(this.line_u, this.line_u*3,  this.line_u))  // 2. scale
-                .times(Mat4.translation(0, this.line_u/2, 0))         // 1. shift from center at origin to bot at origin
-            );
-            Closed_Cone.insert_transformed_copy_into(this, [4, 10, [0,1]], Mat4.identity()
-                .times(Mat4.translation(0, this.line_u*7, 0))
-                .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
-                .times(Mat4.scale(.5, .5, .5))
+        draw_dir() {
+            ArrowShape.insert_transformed_copy_into(this, [], Mat4.identity()
+                .times(Mat4.translation(1.0, 1.0, 0))
+                .times(Mat4.rotation(-Math.PI/2, 0, 0, 1))
             );
         }
     }
@@ -110,6 +123,7 @@ const Tree =
             return msg;
         }
     }
+
 
 const Camera =
     class Camera {
@@ -227,7 +241,7 @@ export class Bsp_Demo extends Scene {
             planet1: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
             cube: new Cube(),
             tree0: new TreeShape0(),
-            lwn: new LineWithNormalShape(),
+            camera: new CameraShape(),
         };
 
         // *** Materials
@@ -353,11 +367,7 @@ export class Bsp_Demo extends Scene {
     }
 
     camera_func_call(func) {
-        return () => {
-            if (this.cur_camera != 0) {
-                this.camera[func]();
-            }
-        };
+        return () => this.camera[func]();
     }
 
     cur_camera_name() {
@@ -459,6 +469,14 @@ export class Bsp_Demo extends Scene {
         let mt_floor = Mat4.scale(30, 0.1, 20);
         this.shapes.cube.draw(context, program_state, mt_floor, this.materials.gray);
 
+        // draw camera
+        if (this.cur_camera != 1) {
+            let mt_camera = Mat4.identity()
+                .times(Mat4.translation(this.camera.eye[0], this.camera.eye[1], this.camera.eye[2]))
+                .times(Mat4.rotation(-this.camera.yaw, 0, 1, 0))
+            ;
+            this.shapes.camera.draw(context, program_state, mt_camera, this.materials.gray);
+        }
 
         // draw trees
         if (this.bsp_on) {
