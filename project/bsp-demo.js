@@ -448,7 +448,7 @@ export class Bsp_Demo extends Scene {
         let mt_fov_left = Mat4.identity()
             .times(Mat4.translation(this.camera.eye[0], this.camera.eye[1], this.camera.eye[2]))
             .times(Mat4.translation(-0.25, 1.5, 0))
-            .times(Mat4.rotation(this.camera.fov, 0, 1, 0))
+            .times(Mat4.rotation(this.camera.fov * Math.PI/180, 0, 1, 0))
             .times(Mat4.rotation(-this.camera.yaw, 0, 1, 0))
             .times(Mat4.scale(25, 1, 1))
             .times(Mat4.translation(1, 0, 0))
@@ -458,7 +458,7 @@ export class Bsp_Demo extends Scene {
         let mt_fov_right = Mat4.identity()
             .times(Mat4.translation(this.camera.eye[0], this.camera.eye[1], this.camera.eye[2]))
             .times(Mat4.translation(-0.25, 1.5, 0))
-            .times(Mat4.rotation(-this.camera.fov, 0, 1, 0))
+            .times(Mat4.rotation(-this.camera.fov * Math.PI/180, 0, 1, 0))
             .times(Mat4.rotation(-this.camera.yaw, 0, 1, 0))
             .times(Mat4.scale(25, 1, 1))
             .times(Mat4.translation(1, 0, 0))
@@ -485,16 +485,21 @@ export class Bsp_Demo extends Scene {
     render_trees_bsp(context, program_state) {
         let camera_pos = this.get_camera_pos();
         let camera_dir = this.get_camera_dir();
+        let camera_fov = this.camera.fov;
         console.log('camera_pos: ' + camera_pos);
         console.log('camera_dir: ' + camera_dir);
+        console.log('camera_fov: ' + camera_fov);
 
-        let in_front_cells = this.bsp_query.in_front_of(this.bsp_root, camera_pos, camera_dir);
-        console.log('in_front_cells length: ' + in_front_cells.length);
+//        let in_view_cells = this.bsp_query.in_front_of(this.bsp_root, camera_pos, camera_dir);
+//        console.log('in_view_cells length: ' + in_view_cells.length);
+
+        let in_view_cells = this.bsp_query.in_fov_of(this.bsp_root, camera_pos, camera_dir, camera_fov);
+        console.log('in_fov_cells length: ' + in_view_cells.length);
 
         console.log('cells: ');
-        console.log(in_front_cells);
+        console.log(in_view_cells);
 
-        for (let node of in_front_cells) {
+        for (let node of in_view_cells) {
             for (let tree of node.polygons) {
                 this.render_tree(context, program_state, tree, this.colors[node.color]);
             }

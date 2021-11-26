@@ -29,6 +29,11 @@ const normalize = bsp.normalize =
         );
     }
 
+const length = bsp.length =
+    function (v) {
+        return Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    }
+
 const add3 = bsp.add3 =
     function (v1, v2) {
         return vec3(
@@ -294,6 +299,39 @@ const BSPQuery = bsp.BSPQuery =
                 }
                 if (node.back) {
                     cells = cells.concat(this.in_front_of(node.back, point, dir, depth-1));
+                }
+            }
+
+            return cells;
+        }
+
+        //
+        // Returns all cells in the bsp that are in the fov of the given {point, direction}.
+        //
+        in_fov_of(node, point, dir, fov, depth=0) {
+            let cells = [];
+
+            let diff = sub3(node.center, point);
+            let dp = dot(diff, dir);
+            let angle = Math.acos(dp/(length(dir)*length(diff))) * 180/Math.PI;
+
+            //let diff = node.center.minus(point);
+//            let diff = point.minus(node.center);
+//            let angle = Math.atan2(diff[2], diff[0]);
+
+            console.log('in_fov_of: bsp_root.center: ' + node.center);
+            console.log('\tpoint: ' + point + ', dir: ' + dir);
+            console.log('\dp: ' + dp);
+            console.log('\tdiff: ' + diff + ', angle: ' + angle + ', fov: ' + fov);
+            console.log('\tdepth: ' + depth);
+
+            if (dp > 0 && angle <= fov) { // in front and within fov
+                cells = [node];
+                if (node.front) {
+                    cells = cells.concat(this.in_fov_of(node.front, point, dir, fov, depth-1));
+                }
+                if (node.back) {
+                    cells = cells.concat(this.in_fov_of(node.back, point, dir, fov, depth-1));
                 }
             }
 
