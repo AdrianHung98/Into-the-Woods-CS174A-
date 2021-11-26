@@ -1,6 +1,7 @@
 import {defs, tiny} from './examples/common.js';
 import {Axes_Viewer, Axes_Viewer_Test_Scene} from "./examples/axes-viewer.js"
 import {Collision_Demo, Inertia_Demo} from "./examples/collisions-demo.js"
+import {Control_Demo} from "./examples/control-demo.js"
 import {Many_Lights_Demo} from "./examples/many-lights-demo.js"
 import {Obj_File_Demo} from "./examples/obj-file-demo.js"
 import {Scene_To_Texture_Demo} from "./examples/scene-to-texture-demo.js"
@@ -46,7 +47,9 @@ Object.assign(defs,
 
 
 //const Main_Scene = Tree_Demo;
-const Main_Scene = Bsp_Demo; //swap scenes to switch main scene
+//const Main_Scene = Bsp_Demo; //swap scenes to switch main scene
+//const Main_Scene = Control_Demo; //swap scenes to switch main scene
+const Main_Scene = Collision_Demo; //swap scenes to switch main scene
 const Additional_Scenes = [];
 
 export {Main_Scene, Additional_Scenes, Canvas_Widget, Code_Widget, Text_Widget, defs}

@@ -42,8 +42,8 @@ const TreeShape0 =
             super("position", "normal", "texture_coord");
             this.tree_w = 0.25;
             this.tree_d = 0.25;
-            this.tree_h = 0.75;
-            this.tree_r = 0.5;
+            this.tree_h = 1.00;
+            this.tree_r = 0.75;
             this.draw_stem();
             this.draw_leaf();
         }
@@ -96,6 +96,7 @@ const CameraShape =
         draw_body() {
             TreeShape0.insert_transformed_copy_into(this, [], Mat4.identity()
                 .times(Mat4.translation(0, 0, 0))
+                .times(Mat4.scale(0.75, 0.75, 0.75))
             );
         }
 
@@ -448,8 +449,8 @@ export class Bsp_Demo extends Scene {
         ;
 
         if (this.cur_lod == 1) {
-            // scale up the lowpolytree model a bit
-            mt_tree = mt_tree.times(Mat4.scale(1.5, 1.5, 1.5));
+            // move up the lowpolytree model a bit
+            mt_tree = mt_tree.times(Mat4.translation(0, 1.8, 0));
 
             this.shapes.tree1.draw(context, program_state, mt_tree, material);
         }
