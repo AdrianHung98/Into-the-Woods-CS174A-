@@ -250,6 +250,7 @@ export class Bsp_Demo extends Scene {
             tree0: new TreeShape0(),
             arrow: new ArrowShape(),
             camera: new CameraShape(),
+            tree1: new Shape_From_File("assets/LowPolyTree/lowpolytree.obj"),
         };
 
         // *** Materials
@@ -289,6 +290,8 @@ export class Bsp_Demo extends Scene {
         this.switch_camera = false;
         this.cur_camera = 0;
         this.camera = new Camera(vec3(0, 1, 15), -Math.PI/2, 0, vec3(0, 1, 0));
+
+        this.cur_lod = 1;
 
         // object list of trees
         this.trees = [];
@@ -384,6 +387,11 @@ export class Bsp_Demo extends Scene {
         else return '<error>';
     }
 
+    next_lod() {
+        this.cur_lod = (this.cur_lod+1) % 2;
+        console.log('cur_lod: ' + this.cur_lod);
+    }
+
     make_control_panel() {
         let anon = () => this.format_camera_idx();
 
@@ -391,9 +399,15 @@ export class Bsp_Demo extends Scene {
         this.key_triggered_button("Split BSP once", ["n"], this.split_bsp);
         this.new_line();
         this.new_line();
+        this.control_panel.innerHTML += "Click to cycle detail level.<br>";
+        this.key_triggered_button("Switch LOD", ["u"], this.next_lod);
+        this.new_line();
+        this.new_line();
         this.control_panel.innerHTML += "Click to cycle between global and player camera.<br>";
         this.key_triggered_button("Switch cameras", ["t"], this.next_camera);
         this.live_string(box => box.textContent = "- Current camera: " + this.cur_camera_name());
+        this.new_line();
+        this.new_line();
         this.new_line();
         this.new_line();
         this.key_triggered_button("Move forward", ["i"], this.camera_func_call('forward'));
@@ -428,6 +442,22 @@ export class Bsp_Demo extends Scene {
 
     }
 
+    render_tree(context, program_state, tree, material) {
+        let mt_tree = Mat4.identity()
+            .times(Mat4.translation(tree.p[0], tree.p[1], tree.p[2]))
+        ;
+
+        if (this.cur_lod == 1) {
+            // scale up the lowpolytree model a bit
+            mt_tree = mt_tree.times(Mat4.scale(1.5, 1.5, 1.5));
+
+            this.shapes.tree1.draw(context, program_state, mt_tree, material);
+        }
+        else {
+            this.shapes.tree0.draw(context, program_state, mt_tree, material);
+        }
+    }
+
     render_trees_bsp(context, program_state) {
         let camera_pos = this.get_camera_pos();
         let camera_dir = this.get_camera_dir();
@@ -442,9 +472,7 @@ export class Bsp_Demo extends Scene {
 
         for (let node of in_front_cells) {
             for (let tree of node.polygons) {
-                let mt_tree = Mat4.identity().times(
-                    Mat4.translation(tree.p[0], tree.p[1], tree.p[2]));
-                this.shapes.tree0.draw(context, program_state, mt_tree, this.colors[node.color]);
+                this.render_tree(context, program_state, tree, this.colors[node.color]);
             }
         }
     }
@@ -507,9 +535,7 @@ export class Bsp_Demo extends Scene {
         }
         else {
             for (let tree of this.trees) {
-                let mt_tree = Mat4.identity().times(
-                    Mat4.translation(tree.p[0], tree.p[1], tree.p[2]));
-                this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.gray);
+                this.render_tree(context, program_state, tree, this.materials.gray);
             }
         }
     }
