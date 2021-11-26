@@ -144,7 +144,6 @@ const Camera =
             return Mat4.inverse(this._matrix);
         }
         forward() {
-            console.log('my custom forward');
             // this.eye = this.eye.plus( this.front );  // this changes y as well
             this.eye = vec3(
                 this.eye[0] + this.front[0],
@@ -294,13 +293,16 @@ export class Bsp_Demo extends Scene {
         this.bsp_on = ! this.bsp_on;
     }
 
-    get_camera_pos(program_state) {
-        let cam_tr = program_state.camera_transform;
-        return vec3(cam_tr[0][3], cam_tr[1][3], cam_tr[2][3]);
+    get_camera_pos() {
+        return this.camera.eye;
     }
 
-    get_camera_lookat(program_state) {
-        console.log(program_state.camera_transform);
+    get_camera_lookat() {
+        return this.camera.eye.plus(this.camera.front);
+    }
+
+    get_camera_dir() {
+        return this.camera.front;
     }
 
     next_camera() {
@@ -348,13 +350,17 @@ export class Bsp_Demo extends Scene {
         this.key_triggered_button("Rotate down", ["h"], this.camera_func_call('rot_down'));
     }
 
-    render_bsp(context, program_state) {
-        let camera_pos = this.get_camera_pos(program_state);
+    render_trees_bsp(context, program_state) {
+        let camera_pos = this.get_camera_pos();
+        let camera_dir = this.get_camera_dir();
         console.log('camera_pos: ' + camera_pos);
-        let camera_lookat = this.get_camera_lookat(program_state);
-        console.log('camera_lookat: ' + camera_lookat);
-        let in_front = this.bsp_query.in_front_of(this.bsp_root, camera_pos, vec3(0,0,-1));
+        console.log('camera_dir: ' + camera_dir);
+
+        let in_front = this.bsp_query.in_front_of(this.bsp_root, camera_pos, camera_dir);
         console.log('in front length: ' + in_front.length);
+
+        console.log('cells: ');
+        console.log(in_front);
     }
 
     render_scene(context, program_state) {
@@ -407,7 +413,7 @@ export class Bsp_Demo extends Scene {
 
         // draw trees
         if (this.bsp_on) {
-            this.render_bsp(context, program_state);
+            this.render_trees_bsp(context, program_state);
         }
         else {
             for (let tree of this.trees) {
@@ -430,8 +436,8 @@ export class Bsp_Demo extends Scene {
 
         if (this.switch_camera) {
             this._prev_camera_transform = context.scratchpad.controls.inverse();
-            console.log('prev camera transform');
-            console.log(this._prev_camera_transform);
+//            console.log('prev camera transform');
+//            console.log(this._prev_camera_transform);
             if (this.cur_camera == 1) {
                 program_state.set_camera(this.camera.matrix());
             }
