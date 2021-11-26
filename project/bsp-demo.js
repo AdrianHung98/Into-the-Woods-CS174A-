@@ -89,7 +89,8 @@ const CameraShape =
         constructor() {
             super("position", "normal", "texture_coord");
             this.draw_body();
-            this.draw_dir();
+//            this.draw_dir(); // we render this separately so that it can be rotated along pitch
+                               // without having to rotate the entire player along the pitch
         }
 
         draw_body() {
@@ -201,10 +202,16 @@ const Camera =
         }
         rot_up() {
             this.pitch += 0.1;
+            if (this.pitch > 0.78) {
+                this.pitch = 0.78
+            }
             this.update_eulers();
         }
         rot_down() {
             this.pitch -= 0.1;
+            if (this.pitch < -0.78) {
+                this.pitch = -0.78
+            }
             this.update_eulers();
         }
         toString() {
@@ -241,6 +248,7 @@ export class Bsp_Demo extends Scene {
             planet1: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
             cube: new Cube(),
             tree0: new TreeShape0(),
+            arrow: new ArrowShape(),
             camera: new CameraShape(),
         };
 
@@ -401,6 +409,25 @@ export class Bsp_Demo extends Scene {
         this.key_triggered_button("Rotate down", ["h"], this.camera_func_call('rot_down'));
     }
 
+    render_player(context, program_state) {
+        let mt_camera = Mat4.identity()
+            .times(Mat4.translation(this.camera.eye[0], this.camera.eye[1], this.camera.eye[2]))
+            .times(Mat4.rotation(-this.camera.yaw, 0, 1, 0))
+//            .times(Mat4.rotation(this.camera.pitch, 0, 0, 1)) // don't rotate the player body along the pitch
+        ;
+        this.shapes.camera.draw(context, program_state, mt_camera, this.materials.gray);
+
+        let mt_arrow = mt_camera
+            .times(Mat4.translation(0, 1.5, 0))
+            .times(Mat4.rotation(this.camera.pitch, 0, 0, 1))
+            .times(Mat4.translation(1.0, 0.0, 0))
+            .times(Mat4.rotation(-Math.PI/2, 0, 0, 1))
+        ;
+
+        this.shapes.arrow.draw(context, program_state, mt_arrow, this.materials.gray);
+
+    }
+
     render_trees_bsp(context, program_state) {
         let camera_pos = this.get_camera_pos();
         let camera_dir = this.get_camera_dir();
@@ -469,13 +496,9 @@ export class Bsp_Demo extends Scene {
         let mt_floor = Mat4.scale(30, 0.1, 20);
         this.shapes.cube.draw(context, program_state, mt_floor, this.materials.gray);
 
-        // draw camera
+        // draw player
         if (this.cur_camera != 1) {
-            let mt_camera = Mat4.identity()
-                .times(Mat4.translation(this.camera.eye[0], this.camera.eye[1], this.camera.eye[2]))
-                .times(Mat4.rotation(-this.camera.yaw, 0, 1, 0))
-            ;
-            this.shapes.camera.draw(context, program_state, mt_camera, this.materials.gray);
+            this.render_player(context, program_state);
         }
 
         // draw trees
