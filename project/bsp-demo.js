@@ -1,7 +1,8 @@
 import {defs, tiny} from './../examples/common.js';
 // Pull these names into this module's scope for convenience:
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
-const {Capped_Cylinder, Closed_Cone, Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere} = defs
+const {Square, Capped_Cylinder, Closed_Cone, Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere}
+    = defs
 
 const {hex_color} = tiny;
 
@@ -17,24 +18,24 @@ const {Cube2} = defs2;
 import {bsp} from './bsp.js';
 
 // 2D shape, to display the texture buffer
-const Square =
-    class Square extends tiny.Vertex_Buffer {
-        constructor() {
-            super("position", "normal", "texture_coord");
-            this.arrays.position = [
-                vec3(0, 0, 0), vec3(1, 0, 0), vec3(0, 1, 0),
-                vec3(1, 1, 0), vec3(1, 0, 0), vec3(0, 1, 0)
-            ];
-            this.arrays.normal = [
-                vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1),
-                vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1),
-            ];
-            this.arrays.texture_coord = [
-                vec(0, 0), vec(1, 0), vec(0, 1),
-                vec(1, 1), vec(1, 0), vec(0, 1)
-            ]
-        }
-    }
+//const Square =
+//    class Square extends tiny.Vertex_Buffer {
+//        constructor() {
+//            super("position", "normal", "texture_coord");
+//            this.arrays.position = [
+//                vec3(0, 0, 0), vec3(1, 0, 0), vec3(0, 1, 0),
+//                vec3(1, 1, 0), vec3(1, 0, 0), vec3(0, 1, 0)
+//            ];
+//            this.arrays.normal = [
+//                vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1),
+//                vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1),
+//            ];
+//            this.arrays.texture_coord = [
+//                vec(0, 0), vec(1, 0), vec(0, 1),
+//                vec(1, 1), vec(1, 0), vec(0, 1)
+//            ]
+//        }
+//    }
 
 const TreeShape0 =
     class TreeShape0 extends Shape {
@@ -139,10 +140,12 @@ const Camera =
         // front: vector
         // up: vector
         //
-        constructor(eye, yaw, pitch, up, tag) {
+        constructor(eye, yaw, pitch, up, fov, tag) {
             this.eye = eye;
             this.up = up;
             this.tag = tag;
+
+            this.fov = fov;
 
             this.yaw = yaw;
             this.pitch = pitch;
@@ -252,6 +255,7 @@ export class Bsp_Demo extends Scene {
             arrow: new ArrowShape(),
             camera: new CameraShape(),
             tree1: new Shape_From_File("assets/LowPolyTree/lowpolytree.obj"),
+            square: new Square(),
         };
 
         // *** Materials
@@ -275,6 +279,7 @@ export class Bsp_Demo extends Scene {
             dark_yellow: create_phong_of_color(0.6, 0.6, 0.1, 1),
             dark_purple: create_phong_of_color(0.6, 0.1, 0.6, 1),
             dark_cyan: create_phong_of_color(0.1, 0.6, 0.6, 1),
+            transparent_yellow: create_phong_of_color(1, 1, 0, 0.1),
         }
 
         this.colors = [
@@ -290,7 +295,7 @@ export class Bsp_Demo extends Scene {
 
         this.switch_camera = false;
         this.cur_camera = 0;
-        this.camera = new Camera(vec3(0, 1, 15), -Math.PI/2, 0, vec3(0, 1, 0));
+        this.camera = new Camera(vec3(0, 1, 15), -Math.PI/2, 0, vec3(0, 1, 0), 45);
 
         this.cur_lod = 1;
 
@@ -438,9 +443,27 @@ export class Bsp_Demo extends Scene {
             .times(Mat4.translation(1.0, 0.0, 0))
             .times(Mat4.rotation(-Math.PI/2, 0, 0, 1))
         ;
-
         this.shapes.arrow.draw(context, program_state, mt_arrow, this.materials.gray);
 
+        let mt_fov_left = Mat4.identity()
+            .times(Mat4.translation(this.camera.eye[0], this.camera.eye[1], this.camera.eye[2]))
+            .times(Mat4.translation(-0.25, 1.5, 0))
+            .times(Mat4.rotation(this.camera.fov, 0, 1, 0))
+            .times(Mat4.rotation(-this.camera.yaw, 0, 1, 0))
+            .times(Mat4.scale(25, 1, 1))
+            .times(Mat4.translation(1, 0, 0))
+        ;
+        this.shapes.square.draw(context, program_state, mt_fov_left, this.materials.transparent_yellow);
+
+        let mt_fov_right = Mat4.identity()
+            .times(Mat4.translation(this.camera.eye[0], this.camera.eye[1], this.camera.eye[2]))
+            .times(Mat4.translation(-0.25, 1.5, 0))
+            .times(Mat4.rotation(-this.camera.fov, 0, 1, 0))
+            .times(Mat4.rotation(-this.camera.yaw, 0, 1, 0))
+            .times(Mat4.scale(25, 1, 1))
+            .times(Mat4.translation(1, 0, 0))
+        ;
+        this.shapes.square.draw(context, program_state, mt_fov_right, this.materials.transparent_yellow);
     }
 
     render_tree(context, program_state, tree, material) {
@@ -571,8 +594,19 @@ export class Bsp_Demo extends Scene {
             program_state.set_camera(this.camera.matrix());
         }
 
-        program_state.projection_transform = Mat4.perspective(
-            Math.PI / 4, context.width / context.height, .1, 1000);
+
+//        program_state.projection_transform = Mat4.perspective(
+//            Math.PI / 4, context.width / context.height, .1, 1000);
+//        console.log('context.width: ' + context.width + ', height: ' + context.height);
+        if (this.cur_camera == 0) {
+            program_state.projection_transform = Mat4.perspective(
+                45 * (Math.PI/180), context.width / context.height, .1, 1000);
+        }
+        else {
+            program_state.projection_transform = Mat4.perspective(
+                this.camera.fov * (Math.PI/180), context.width / context.height, .1, 1000);
+        }
+
 
 
         // Render scene

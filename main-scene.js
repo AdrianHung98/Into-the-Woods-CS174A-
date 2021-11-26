@@ -47,9 +47,9 @@ Object.assign(defs,
 
 
 //const Main_Scene = Tree_Demo;
-//const Main_Scene = Bsp_Demo; //swap scenes to switch main scene
+const Main_Scene = Bsp_Demo; //swap scenes to switch main scene
 //const Main_Scene = Control_Demo; //swap scenes to switch main scene
-const Main_Scene = Collision_Demo; //swap scenes to switch main scene
+//const Main_Scene = Collision_Demo; //swap scenes to switch main scene
 const Additional_Scenes = [];
 
 export {Main_Scene, Additional_Scenes, Canvas_Widget, Code_Widget, Text_Widget, defs}
