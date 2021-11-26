@@ -205,6 +205,14 @@ const Camera =
         }
     }
 
+function create_phong_of_color(r, g, b, a) {
+    return new Material(new Phong_Shader(), {
+        color: color(r, g, b, a), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
+        color_texture: null,
+        light_depth_texture: null
+    });
+}
+
 // The scene
 export class Bsp_Demo extends Scene {
     constructor() {
@@ -230,15 +238,31 @@ export class Bsp_Demo extends Scene {
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#ffffff")}),
             planet1: new Material(new defs.Phong_Shader(),
                 {ambient: .0, diffusivity: .6, color: hex_color("#808080")}),
-            floor: new Material(new Phong_Shader(), {
-                color: color(1, 1, 1, 1), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
-                color_texture: null,
-                light_depth_texture: null
-            }),
+            gray: create_phong_of_color(1, 1, 1, 1),
+            red: create_phong_of_color(1, 0, 0, 1),
+            green: create_phong_of_color(0, 1, 0, 1),
+            blue: create_phong_of_color(0, 0, 1, 1),
+            yellow: create_phong_of_color(1, 1, 0, 1),
+            purple: create_phong_of_color(1, 0, 1, 1),
+            cyan: create_phong_of_color(0, 1, 1, 1),
+            dark_red: create_phong_of_color(0.6, 0.1, 0.1, 1),
+            dark_green: create_phong_of_color(0.1, 0.6, 0.1, 1),
+            dark_blue: create_phong_of_color(0.1, 0.1, 0.6, 1),
+            dark_yellow: create_phong_of_color(0.6, 0.6, 0.1, 1),
+            dark_purple: create_phong_of_color(0.6, 0.1, 0.6, 1),
+            dark_cyan: create_phong_of_color(0.1, 0.6, 0.6, 1),
         }
 
+        this.colors = [
+            this.materials.gray,
+            this.materials.red, this.materials.green, this.materials.blue,
+            this.materials.yellow, this.materials.purple, this.materials.cyan,
+            this.materials.dark_red, this.materials.dark_green, this.materials.dark_blue,
+            this.materials.dark_yellow, this.materials.dark_purple, this.materials.dark_cyan,
+        ];
+
         // lookat(eye, at, up) , see Dis w3-c page 27
-        this.global_camera_location = Mat4.look_at(vec3(0, 1, 25), vec3(0, 4, 0), vec3(0, 1, 0));
+        this.global_camera_location = Mat4.look_at(vec3(10, 20, 45), vec3(10, 1, 0), vec3(0, 1, 0));
 
         this.switch_camera = false;
         this.cur_camera = 0;
@@ -257,6 +281,7 @@ export class Bsp_Demo extends Scene {
         // bsp
         this.bsp_on = false;
         this.bsp_root = new bsp.BSPNode([], vec3(-1,0,0));
+        this.bsp_root.color = 0;
         this.bsp_divider = new bsp.BSPDivider();
         this.bsp_query = new bsp.BSPQuery();
 
@@ -287,6 +312,22 @@ export class Bsp_Demo extends Scene {
     split_bsp() {
         this.bsp_divider.divide(this.bsp_root, 1);
         console.log('' + this.bsp_root);
+
+        // go through and assign a color-material to every cell
+        let color_idx = 0;
+        let stack = [this.bsp_root];
+        while (stack.length > 0) {
+            let node = stack.shift();
+            console.log('assigned color: ' + color_idx);
+            node.color = color_idx;
+            color_idx = (color_idx+1) % this.colors.length;
+            if (node.front) {
+                stack.push(node.front);
+            }
+            if (node.back) {
+                stack.push(node.back);
+            }
+        }
     }
 
     toggle_bsp() {
@@ -356,11 +397,19 @@ export class Bsp_Demo extends Scene {
         console.log('camera_pos: ' + camera_pos);
         console.log('camera_dir: ' + camera_dir);
 
-        let in_front = this.bsp_query.in_front_of(this.bsp_root, camera_pos, camera_dir);
-        console.log('in front length: ' + in_front.length);
+        let in_front_cells = this.bsp_query.in_front_of(this.bsp_root, camera_pos, camera_dir);
+        console.log('in_front_cells length: ' + in_front_cells.length);
 
         console.log('cells: ');
-        console.log(in_front);
+        console.log(in_front_cells);
+
+        for (let node of in_front_cells) {
+            for (let tree of node.polygons) {
+                let mt_tree = Mat4.identity().times(
+                    Mat4.translation(tree.p[0], tree.p[1], tree.p[2]));
+                this.shapes.tree0.draw(context, program_state, mt_tree, this.colors[node.color]);
+            }
+        }
     }
 
     render_scene(context, program_state) {
@@ -408,7 +457,7 @@ export class Bsp_Demo extends Scene {
 
         // draw ground
         let mt_floor = Mat4.scale(30, 0.1, 20);
-        this.shapes.cube.draw(context, program_state, mt_floor, this.materials.floor);
+        this.shapes.cube.draw(context, program_state, mt_floor, this.materials.gray);
 
 
         // draw trees
@@ -419,7 +468,7 @@ export class Bsp_Demo extends Scene {
             for (let tree of this.trees) {
                 let mt_tree = Mat4.identity().times(
                     Mat4.translation(tree.p[0], tree.p[1], tree.p[2]));
-                this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.floor);
+                this.shapes.tree0.draw(context, program_state, mt_tree, this.materials.gray);
             }
         }
     }

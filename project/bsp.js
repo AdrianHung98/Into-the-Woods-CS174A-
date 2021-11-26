@@ -280,16 +280,21 @@ const BSPQuery = bsp.BSPQuery =
         // Returns all cells in the bsp that are in front of the given {point, direction}.
         //
         in_front_of(node, point, dir, depth=0) {
-            let cells = node.polygons;
+            let cells = [];
 
             console.log('in_front_of: bsp_root.center: ' + node.center);
             console.log('\tpoint: ' + point + ', dir: ' + dir);
             console.log('\tdepth: ' + depth);
             let side = whichSide_point({p: point, n: dir}, node.center);
             console.log('\tside: ' + side);
-            if (side == "front" && node.front) {
-                cells = cells.concat(this.in_front_of(node.front, point, dir, depth-1));
-                cells = cells.concat(this.in_front_of(node.back, point, dir, depth-1));
+            if (side == "front") {
+                cells = [node];
+                if (node.front) {
+                    cells = cells.concat(this.in_front_of(node.front, point, dir, depth-1));
+                }
+                if (node.back) {
+                    cells = cells.concat(this.in_front_of(node.back, point, dir, depth-1));
+                }
             }
 
             return cells;
