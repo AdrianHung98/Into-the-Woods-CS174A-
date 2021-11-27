@@ -281,6 +281,31 @@ const BSPQuery = bsp.BSPQuery =
         constructor() {
         }
 
+        get_bsp_leaves(node) {
+            let stack = [node];
+
+            let cells = [];
+            while (stack.length > 0) {
+                let node = stack.shift();
+                if (!node.front && !node.back) {
+                    cells.push(node);
+                }
+                else {
+                    if (node.polygons) {
+                        // even if not a leaf, if there are (collinear) polygons in this node, push it on returned cells list
+                        cells.push(node);
+                    }
+                    if (node.front) {
+                        stack.push(node.front);
+                    }
+                    if (node.back) {
+                        stack.push(node.back);
+                    }
+                }
+            }
+            return cells;
+        }
+
         //
         // Returns all cells in the bsp that are in front of the given {point, direction}.
         //
@@ -309,15 +334,40 @@ const BSPQuery = bsp.BSPQuery =
         // Returns all cells in the bsp that are in the fov of the given {point, direction}.
         //
         in_fov_of(node, point, dir, fov, depth=0) {
+            //// get all cells in front
+            //let cells = this.in_front_of(node, point, dir);
+
+            // get all leaves or non-leaf cells that contain polygons:
+            let cells = this.get_bsp_leaves(node);
+
+            // linear filter using in-front? and in-fov? criteria
+            let in_fov_cells = [];
+            for (let cell of cells) {
+                let diff = sub3(cell.center, point);
+                let dp = dot(diff, dir);
+                let angle = Math.acos(dp/(length(dir)*length(diff))) * 180/Math.PI;
+
+                if (dp >= 0 && angle <= fov) {
+                    in_fov_cells.push(cell);
+                }
+            }
+            return in_fov_cells;
+        }
+
+        //
+        // Returns all cells in the bsp that are in the fov of the given {point, direction}.
+        //
+        // This version checks simultaneousy the node's center of mass being in front and fov, but
+        //   for *all* nodes (not only leaf nodes). So, a top-level node (ie, bsp root) may not necc
+        //   be in front but may have children which are definitely in front. (esp for a very large
+        //   large bsp with a root at the origin, spanning the whole level, or if the bsp_root is
+        //   just behind the player).
+        in_fov_of_v0(node, point, dir, fov, depth=0) {
             let cells = [];
 
             let diff = sub3(node.center, point);
             let dp = dot(diff, dir);
             let angle = Math.acos(dp/(length(dir)*length(diff))) * 180/Math.PI;
-
-            //let diff = node.center.minus(point);
-//            let diff = point.minus(node.center);
-//            let angle = Math.atan2(diff[2], diff[0]);
 
             console.log('in_fov_of: bsp_root.center: ' + node.center);
             console.log('\tpoint: ' + point + ', dir: ' + dir);
@@ -337,6 +387,7 @@ const BSPQuery = bsp.BSPQuery =
 
             return cells;
         }
+
     }
 
 //

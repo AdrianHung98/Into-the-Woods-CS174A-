@@ -310,6 +310,7 @@ export class Bsp_Demo extends Scene {
         this.create_trees(20, 0, 0);
 
         // bsp
+//        this.cur_bsp_mode = 0;
         this.bsp_on = false;
         this.bsp_root = new bsp.BSPNode([], vec3(-1,0,0));
         this.bsp_root.color = 0;
@@ -398,19 +399,30 @@ export class Bsp_Demo extends Scene {
         console.log('cur_lod: ' + this.cur_lod);
     }
 
-    make_control_panel() {
-        let anon = () => this.format_camera_idx();
+//    cur_bsp_mode_name() {
+//        if (this.cur_bsp_mode == 0) return '0: center of mass';
+//        else if (this.cur_bsp_mode == 1) return '1: first object';
+//        else return '<error>';
+//    }
+//
+//    next_bsp_mode() {
+//        this.cur_bsp_mode = (this.cur_bsp_mode+1) % 2;
+//        console.log('cur_bsp_mode: ' + this.cur_bsp_mode);
+//    }
 
-        this.key_triggered_button("Toggle BSP mode", ["b"], this.toggle_bsp);
+    make_control_panel() {
+        this.key_triggered_button("Display using BSP", ["b"], this.toggle_bsp);
         this.key_triggered_button("Split BSP once", ["n"], this.split_bsp);
         this.new_line();
         this.new_line();
-        this.control_panel.innerHTML += "Click to cycle detail level.<br>";
-        this.key_triggered_button("Switch LOD", ["u"], this.next_lod);
+        this.control_panel.innerHTML += "Click to cycle settings:<br>";
+//        this.key_triggered_button("Cycle BSP mode", ["g"], this.next_bsp_mode);
+//        this.live_string(box => box.textContent = "- Current BSP mode: " + this.cur_bsp_mode_name());
+//        this.new_line();
+        this.key_triggered_button("Cycle LOD", ["u"], this.next_lod);
+        this.live_string(box => box.textContent = "- Current LOD: " + this.cur_lod);
         this.new_line();
-        this.new_line();
-        this.control_panel.innerHTML += "Click to cycle between global and player camera.<br>";
-        this.key_triggered_button("Switch cameras", ["t"], this.next_camera);
+        this.key_triggered_button("Cycle cameras", ["t"], this.next_camera);
         this.live_string(box => box.textContent = "- Current camera: " + this.cur_camera_name());
         this.new_line();
         this.new_line();
