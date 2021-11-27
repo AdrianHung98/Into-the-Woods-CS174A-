@@ -307,30 +307,6 @@ const BSPQuery = bsp.BSPQuery =
         }
 
         //
-        // Returns all cells in the bsp that are in front of the given {point, direction}.
-        //
-        in_front_of(node, point, dir, depth=0) {
-            let cells = [];
-
-            console.log('in_front_of: bsp_root.center: ' + node.center);
-            console.log('\tpoint: ' + point + ', dir: ' + dir);
-            console.log('\tdepth: ' + depth);
-            let side = whichSide_point({p: point, n: dir}, node.center);
-            console.log('\tside: ' + side);
-            if (side == "front") {
-                cells = [node];
-                if (node.front) {
-                    cells = cells.concat(this.in_front_of(node.front, point, dir, depth-1));
-                }
-                if (node.back) {
-                    cells = cells.concat(this.in_front_of(node.back, point, dir, depth-1));
-                }
-            }
-
-            return cells;
-        }
-
-        //
         // Returns all cells in the bsp that are in the fov of the given {point, direction}.
         //
         in_fov_of(node, point, dir, fov, depth=0) {
@@ -352,6 +328,30 @@ const BSPQuery = bsp.BSPQuery =
                 }
             }
             return in_fov_cells;
+        }
+
+        //
+        // Returns all cells in the bsp that are in front of the given {point, direction}.
+        //
+        in_front_of_v0(node, point, dir, depth=0) {
+            let cells = [];
+
+            console.log('in_front_of: bsp_root.center: ' + node.center);
+            console.log('\tpoint: ' + point + ', dir: ' + dir);
+            console.log('\tdepth: ' + depth);
+            let side = whichSide_point({p: point, n: dir}, node.center);
+            console.log('\tside: ' + side);
+            if (side == "front") {
+                cells = [node];
+                if (node.front) {
+                    cells = cells.concat(this.in_front_of(node.front, point, dir, depth-1));
+                }
+                if (node.back) {
+                    cells = cells.concat(this.in_front_of(node.back, point, dir, depth-1));
+                }
+            }
+
+            return cells;
         }
 
         //
