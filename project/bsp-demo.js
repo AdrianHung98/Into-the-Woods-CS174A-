@@ -504,6 +504,23 @@ export class Bsp_Demo extends Scene {
                 this.render_tree(context, program_state, tree, this.colors[node.color]);
             }
         }
+
+        let stack = [this.bsp_root];
+        while (stack.length > 0) {
+            let node = stack.shift();
+            if (node.center) {
+                let mt_center = Mat4.identity()
+                    .times(Mat4.translation(node.center[0], node.center[1]+2, node.center[2]))
+                ;
+                this.shapes.sphere.draw(context, program_state, mt_center, this.colors[node.color]);
+            }
+            if (node.front) {
+                stack.push(node.front);
+            }
+            if (node.back) {
+                stack.push(node.back);
+            }
+        }
     }
 
     render_scene(context, program_state) {
