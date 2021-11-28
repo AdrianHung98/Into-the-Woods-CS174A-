@@ -117,6 +117,7 @@ const Tree =
             this.p = vec3(x, y, z);
             this.tag = tag;
             this.type = 'tree';
+            this.material = 'tree';
 
             // add p1, p2 for whichSide_lseg support
             this.p1 = vec3(this.p[0]-0.25, this.p[1], this.p[2]);
@@ -136,6 +137,7 @@ const Cloud =
             this.p = vec3(x, y, z);
             this.tag = tag;
             this.type = 'cloud';
+            this.material = 'cloud';
 
             // add p1, p2 for whichSide_lseg support
             this.p1 = vec3(this.p[0]-0.25, this.p[1], this.p[2]);
@@ -278,6 +280,7 @@ export class Bsp_Demo extends Scene {
             sun: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(4),
             planet1: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
             cube: new Cube(),
+            floor: new Cube(),
             tree0: new TreeShape0(),
             arrow: new ArrowShape(),
             camera: new CameraShape(),
@@ -310,7 +313,15 @@ export class Bsp_Demo extends Scene {
             transparent_yellow: create_phong_of_color(1, 1, 0, 0.1),
             //cloudy_blue: create_phong_of_color(0.62, 0.76, 0.85, 1),
             cloudy_blue: create_phong_of_color(0.74, 0.96, 1, 1),
-            cloudy_blue2: create_phong_of_color(0.65, 0.95, 0.95, 1),
+
+            ground: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1.0, diffusivity: 1.0, specularity: 0.1,
+                texture: new Texture("assets/ground.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+
+            tree: create_phong_of_color(0.1, 0.6, 0.1, 1),
+            cloud: create_phong_of_color(0.65, 0.95, 0.95, 1),
         }
 
         this.colors = [
@@ -344,7 +355,7 @@ export class Bsp_Demo extends Scene {
         this.STATIC_CLOUD_ID = 0;
         // create clouds
         this.static_clouds = this.static_clouds.concat(
-            this.create_clouds(3, 15, 10, -10, this.STATIC_CLOUD_ID)
+            this.create_clouds(3, 20, 10, -10, this.STATIC_CLOUD_ID)
         );
         this.STATIC_CLOUD_ID += 3;
 
@@ -357,10 +368,20 @@ export class Bsp_Demo extends Scene {
         );
         this.CLOUD_ID += 5;
 
+        // zoom the floor out
+        for (let i = 0; i < this.shapes.floor.arrays.texture_coord.length; i++) {
+            let coord = this.shapes.floor.arrays.texture_coord[i];
+
+            this.shapes.floor.arrays.texture_coord[i][0] = coord[0]*25;
+            this.shapes.floor.arrays.texture_coord[i][1] = coord[1]*25;
+        }
+        console.log(this.shapes.floor.arrays.texture_coord);
+
 
         // bsp
 //        this.cur_bsp_mode = 0;
         this.bsp_on = false;
+        this.bsp_coloring = false;
         this.bsp_root = new bsp.BSPNode([], vec3(-1,0,0));
         this.bsp_root.color = 0;
         this.bsp_divider = new bsp.BSPDivider();
@@ -465,6 +486,11 @@ export class Bsp_Demo extends Scene {
         console.log('cur_lod: ' + this.cur_lod);
     }
 
+    toggle_bsp_coloring() {
+        this.bsp_coloring = ! this.bsp_coloring;
+        console.log('bsp_coloring: ' + this.bsp_coloring);
+    }
+
 //    cur_bsp_mode_name() {
 //        if (this.cur_bsp_mode == 0) return '0: center of mass';
 //        else if (this.cur_bsp_mode == 1) return '1: first object';
@@ -481,10 +507,13 @@ export class Bsp_Demo extends Scene {
         this.key_triggered_button("Split BSP once", ["n"], this.split_bsp);
         this.new_line();
         this.new_line();
-        this.control_panel.innerHTML += "Click to cycle settings:<br>";
+        this.control_panel.innerHTML += "Click to change settings:<br>";
 //        this.key_triggered_button("Cycle BSP mode", ["g"], this.next_bsp_mode);
 //        this.live_string(box => box.textContent = "- Current BSP mode: " + this.cur_bsp_mode_name());
 //        this.new_line();
+        this.key_triggered_button("Toggle BSP coloring", ["g"], this.toggle_bsp_coloring);
+        this.live_string(box => box.textContent = "- BSP coloring: " + this.bsp_coloring);
+        this.new_line();
         this.key_triggered_button("Cycle LOD", ["u"], this.next_lod);
         this.live_string(box => box.textContent = "- Current LOD: " + this.cur_lod);
         this.new_line();
@@ -553,7 +582,7 @@ export class Bsp_Demo extends Scene {
 
         if (this.cur_lod == 1) {
             // move up the lowpolytree model a bit
-            mt_tree = mt_tree.times(Mat4.translation(0, 1.8, 0));
+            mt_tree = mt_tree.times(Mat4.translation(0, 1.5, 0));
 
             this.shapes.tree1.draw(context, program_state, mt_tree, material);
         }
@@ -595,10 +624,12 @@ export class Bsp_Demo extends Scene {
         for (let node of in_view_cells) {
             for (let polyg of node.polygons) {
                 if (polyg.type == 'tree') {
-                    this.render_tree(context, program_state, polyg, this.colors[node.color]);
+                    this.render_tree(context, program_state, polyg,
+                        this.bsp_coloring ? this.colors[node.color] : this.materials[polyg.material]);
                 }
                 else if (polyg.type == 'cloud') {
-                    this.render_cloud(context, program_state, polyg, this.colors[node.color]);
+                    this.render_cloud(context, program_state, polyg,
+                        this.bsp_coloring ? this.colors[node.color] : this.materials[polyg.material]);
                 }
             }
         }
@@ -666,7 +697,12 @@ export class Bsp_Demo extends Scene {
 
         // draw ground
         let mt_floor = Mat4.scale(30, 0.1, 20);
-        this.shapes.cube.draw(context, program_state, mt_floor, this.materials.gray);
+        if (this.cur_lod == 0) {
+            this.shapes.floor.draw(context, program_state, mt_floor, this.materials.gray);
+        }
+        else {
+            this.shapes.floor.draw(context, program_state, mt_floor, this.materials.ground);
+        }
 
         // draw static clouds
         for (let cloud of this.static_clouds) {
@@ -688,10 +724,10 @@ export class Bsp_Demo extends Scene {
         }
         else {
             for (let tree of this.trees) {
-                this.render_tree(context, program_state, tree, this.materials.gray);
+                this.render_tree(context, program_state, tree, this.materials[tree.material]);
             }
             for (let cloud of this.clouds) {
-                this.render_cloud(context, program_state, cloud, this.materials.cloudy_blue2);
+                this.render_cloud(context, program_state, cloud, this.materials[cloud.material]);
             }
         }
     }
