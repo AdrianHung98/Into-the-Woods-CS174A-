@@ -136,6 +136,10 @@ const Cloud =
             this.p = vec3(x, y, z);
             this.tag = tag;
             this.type = 'cloud';
+
+            // add p1, p2 for whichSide_lseg support
+            this.p1 = vec3(this.p[0]-0.25, this.p[1], this.p[2]);
+            this.p2 = vec3(this.p[0]+0.25, this.p[1], this.p[2]);
         }
         toString() {
             let msg = '{cloud ' + this.tag + ': p: [' + this.p[0] + ', ' + this.p[1] + ', ' + this.p[2] + ']}';
@@ -342,15 +346,16 @@ export class Bsp_Demo extends Scene {
         this.static_clouds = this.static_clouds.concat(
             this.create_clouds(3, 15, 10, -10, this.STATIC_CLOUD_ID)
         );
-        this.STATIC_CLOUD_ID += this.static_clouds.length;
+        this.STATIC_CLOUD_ID += 3;
 
         // object list of clouds that will go into the bsp
         this.clouds = [];
         this.CLOUD_ID = 0;
         this.clouds = this.clouds.concat(
-            this.create_clouds(3, 0, 8, -10, this.CLOUD_ID)
+            this.create_clouds(3, 0, 8, -10, this.CLOUD_ID),
+            this.create_clouds(2, 5, 7, -3, this.CLOUD_ID+3)
         );
-        this.CLOUD_ID += this.clouds.length;
+        this.CLOUD_ID += 5;
 
 
         // bsp
@@ -363,6 +368,10 @@ export class Bsp_Demo extends Scene {
 
         for (let tree of this.trees) {
             this.bsp_root.push(tree);
+        }
+
+        for (let cloud of this.clouds) {
+            this.bsp_root.push(cloud);
         }
 
         console.log(''+this.bsp_root);
