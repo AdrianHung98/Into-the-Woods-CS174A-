@@ -116,6 +116,7 @@ const Tree =
             //console.log('creating tree: x: ' + x + ', y: ' + y + ', z: ' + z);
             this.p = vec3(x, y, z);
             this.tag = tag;
+            this.type = 'tree';
 
             // add p1, p2 for whichSide_lseg support
             this.p1 = vec3(this.p[0]-0.25, this.p[1], this.p[2]);
@@ -123,6 +124,21 @@ const Tree =
         }
         toString() {
             let msg = '{tree ' + this.tag + ': p: [' + this.p[0] + ', ' + this.p[1] + ', ' + this.p[2] + ']}';
+            return msg;
+        }
+    }
+
+
+const Cloud =
+    class Cloud {
+        constructor(x, y, z, tag='') {
+            //console.log('creating cloud: x: ' + x + ', y: ' + y + ', z: ' + z);
+            this.p = vec3(x, y, z);
+            this.tag = tag;
+            this.type = 'cloud';
+        }
+        toString() {
+            let msg = '{cloud ' + this.tag + ': p: [' + this.p[0] + ', ' + this.p[1] + ', ' + this.p[2] + ']}';
             return msg;
         }
     }
@@ -238,6 +254,13 @@ function create_phong_of_color(r, g, b, a) {
     });
 }
 
+function getRandInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+
 // The scene
 export class Bsp_Demo extends Scene {
     constructor() {
@@ -256,6 +279,7 @@ export class Bsp_Demo extends Scene {
             camera: new CameraShape(),
             tree1: new Shape_From_File("assets/LowPolyTree/lowpolytree.obj"),
             square: new Square(),
+            cloud: new Shape_From_File("assets/cloud.obj"),
         };
 
         // *** Materials
@@ -280,6 +304,9 @@ export class Bsp_Demo extends Scene {
             dark_purple: create_phong_of_color(0.6, 0.1, 0.6, 1),
             dark_cyan: create_phong_of_color(0.1, 0.6, 0.6, 1),
             transparent_yellow: create_phong_of_color(1, 1, 0, 0.1),
+            //cloudy_blue: create_phong_of_color(0.62, 0.76, 0.85, 1),
+            cloudy_blue: create_phong_of_color(0.74, 0.96, 1, 1),
+            cloudy_blue2: create_phong_of_color(0.65, 0.95, 0.95, 1),
         }
 
         this.colors = [
@@ -301,13 +328,30 @@ export class Bsp_Demo extends Scene {
 
         // object list of trees
         this.trees = [];
-
         this.TREE_ID = 0;
 
         // let there be trees
         this.create_trees(-20, 0, 0);
         this.create_trees(0, 0, 0);
         this.create_trees(20, 0, 0);
+
+        // object list of static clouds
+        this.static_clouds = [];
+        this.STATIC_CLOUD_ID = 0;
+        // create clouds
+        this.static_clouds = this.static_clouds.concat(
+            this.create_clouds(3, 15, 10, -10, this.STATIC_CLOUD_ID)
+        );
+        this.STATIC_CLOUD_ID += this.static_clouds.length;
+
+        // object list of clouds that will go into the bsp
+        this.clouds = [];
+        this.CLOUD_ID = 0;
+        this.clouds = this.clouds.concat(
+            this.create_clouds(3, 0, 8, -10, this.CLOUD_ID)
+        );
+        this.CLOUD_ID += this.clouds.length;
+
 
         // bsp
 //        this.cur_bsp_mode = 0;
@@ -320,6 +364,7 @@ export class Bsp_Demo extends Scene {
         for (let tree of this.trees) {
             this.bsp_root.push(tree);
         }
+
         console.log(''+this.bsp_root);
     }
 
@@ -340,6 +385,18 @@ export class Bsp_Demo extends Scene {
             }
         }
     }
+
+    /**
+     * Create n clouds centered around x, y, z
+     */
+    create_clouds(n, x, y, z, id) {
+        let objs = [];
+        for (let i = 0; i < n; i++) {
+            objs.push(new Cloud(x+getRandInt(-2,2), y+getRandInt(-2,2), z+getRandInt(-2,2), id+i));
+        }
+        return objs;
+    }
+
 
     split_bsp() {
         this.bsp_divider.divide(this.bsp_root, 1);
@@ -496,16 +553,29 @@ export class Bsp_Demo extends Scene {
         }
     }
 
-    render_trees_bsp(context, program_state) {
+    render_cloud(context, program_state, cloud, material) {
+        let mt_cloud = Mat4.identity()
+            .times(Mat4.translation(cloud.p[0], cloud.p[1], cloud.p[2]))
+        ;
+
+        if (this.cur_lod == 1) {
+            // move up the lowpolytree model a bit
+            mt_cloud = mt_cloud.times(Mat4.scale(3, 3, 3));
+
+            this.shapes.cloud.draw(context, program_state, mt_cloud, material);
+        }
+        else {
+            this.shapes.cube.draw(context, program_state, mt_cloud, material);
+        }
+    }
+
+    render_using_bsp(context, program_state) {
         let camera_pos = this.get_camera_pos();
         let camera_dir = this.get_camera_dir();
         let camera_fov = this.camera.fov;
         console.log('camera_pos: ' + camera_pos);
         console.log('camera_dir: ' + camera_dir);
         console.log('camera_fov: ' + camera_fov);
-
-//        let in_view_cells = this.bsp_query.in_front_of(this.bsp_root, camera_pos, camera_dir);
-//        console.log('in_view_cells length: ' + in_view_cells.length);
 
         let in_view_cells = this.bsp_query.in_fov_of(this.bsp_root, camera_pos, camera_dir, camera_fov);
         console.log('in_fov_cells length: ' + in_view_cells.length);
@@ -514,8 +584,13 @@ export class Bsp_Demo extends Scene {
         console.log(in_view_cells);
 
         for (let node of in_view_cells) {
-            for (let tree of node.polygons) {
-                this.render_tree(context, program_state, tree, this.colors[node.color]);
+            for (let polyg of node.polygons) {
+                if (polyg.type == 'tree') {
+                    this.render_tree(context, program_state, polyg, this.colors[node.color]);
+                }
+                else if (polyg.type == 'cloud') {
+                    this.render_cloud(context, program_state, polyg, this.colors[node.color]);
+                }
             }
         }
 
@@ -584,18 +659,30 @@ export class Bsp_Demo extends Scene {
         let mt_floor = Mat4.scale(30, 0.1, 20);
         this.shapes.cube.draw(context, program_state, mt_floor, this.materials.gray);
 
+        // draw static clouds
+        for (let cloud of this.static_clouds) {
+            let mt_cloud = Mat4.identity()
+                .times(Mat4.translation(cloud.p[0], cloud.p[1], cloud.p[2]))
+                .times(Mat4.scale(3, 3, 3))
+            ;
+            this.shapes.cloud.draw(context, program_state, mt_cloud, this.materials.cloudy_blue);
+        }
+
         // draw player
         if (this.cur_camera != 1) {
             this.render_player(context, program_state);
         }
 
-        // draw trees
+        // draw bsp objs
         if (this.bsp_on) {
-            this.render_trees_bsp(context, program_state);
+            this.render_using_bsp(context, program_state);
         }
         else {
             for (let tree of this.trees) {
                 this.render_tree(context, program_state, tree, this.materials.gray);
+            }
+            for (let cloud of this.clouds) {
+                this.render_cloud(context, program_state, cloud, this.materials.cloudy_blue2);
             }
         }
     }
@@ -630,7 +717,6 @@ export class Bsp_Demo extends Scene {
             program_state.set_camera(this.camera.matrix());
         }
 
-
 //        program_state.projection_transform = Mat4.perspective(
 //            Math.PI / 4, context.width / context.height, .1, 1000);
 //        console.log('context.width: ' + context.width + ', height: ' + context.height);
@@ -643,13 +729,8 @@ export class Bsp_Demo extends Scene {
                 this.camera.fov * (Math.PI/180), context.width / context.height, .1, 1000);
         }
 
-
-
         // Render scene
         this.render_scene(context, program_state);
-
-        // Render bsp
-//        this.render_bsp(context, program_state);
     }
 
 }
