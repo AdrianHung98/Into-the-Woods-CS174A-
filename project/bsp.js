@@ -57,6 +57,11 @@ const dot = bsp.dot =
         return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
     }
 
+const dist = bsp.dist =
+    function (v1, v2) {
+        return Math.sqrt(length(sub3(v1,v2)));
+    }
+
 const rotY = bsp.rot =
     function (rads, v) {
         return Mat4.rotation(rads, 0, 1, 0).times(vec4(v[0], v[1], v[2], 0));

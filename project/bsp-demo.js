@@ -252,9 +252,10 @@ const Camera =
         }
     }
 
-function create_phong_of_color(r, g, b, a) {
+function create_phong_of_color(r, g, b, a, amb=0.3, diffuse=0.6, spec=0.4) {
     return new Material(new Phong_Shader(), {
-        color: color(r, g, b, a), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
+        color: color(r, g, b, a),
+        ambient: amb, diffusivity: diffuse, specularity: spec, smoothness: 64,
         color_texture: null,
         light_depth_texture: null
     });
@@ -316,11 +317,10 @@ export class Bsp_Demo extends Scene {
 
             ground: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
-                ambient: 1.0, diffusivity: 1.0, specularity: 0.1,
+                ambient: 0.7, diffusivity: 0.7, specularity: 0.1,
                 texture: new Texture("assets/ground.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-
-            tree: create_phong_of_color(0.1, 0.6, 0.1, 1),
+            tree: create_phong_of_color(0.1, 0.6, 0.1, 1, 0.5, 0.6, 0.4),
             cloud: create_phong_of_color(0.65, 0.95, 0.95, 1),
         }
 
@@ -382,6 +382,9 @@ export class Bsp_Demo extends Scene {
 //        this.cur_bsp_mode = 0;
         this.bsp_on = false;
         this.bsp_coloring = false;
+        this.bsp_cull_level = 0;
+        this.bsp_cull_dist = 4;
+
         this.bsp_root = new bsp.BSPNode([], vec3(-1,0,0));
         this.bsp_root.color = 0;
         this.bsp_divider = new bsp.BSPDivider();
@@ -491,16 +494,16 @@ export class Bsp_Demo extends Scene {
         console.log('bsp_coloring: ' + this.bsp_coloring);
     }
 
-//    cur_bsp_mode_name() {
-//        if (this.cur_bsp_mode == 0) return '0: center of mass';
-//        else if (this.cur_bsp_mode == 1) return '1: first object';
-//        else return '<error>';
-//    }
-//
-//    next_bsp_mode() {
-//        this.cur_bsp_mode = (this.cur_bsp_mode+1) % 2;
-//        console.log('cur_bsp_mode: ' + this.cur_bsp_mode);
-//    }
+    cur_bsp_cull_level() {
+        if (this.bsp_cull_level == 0) return '0: front, fov, no distance';
+        else if (this.bsp_cull_level == 1) return '1: front, fov, distance: ' + this.bsp_cull_dist;
+        else return '<error>';
+    }
+
+    next_bsp_cull_level() {
+        this.bsp_cull_level = (this.bsp_cull_level+1) % 2;
+        console.log('cur_bsp_cull_level: ' + this.bsp_cull_level);
+    }
 
     make_control_panel() {
         this.key_triggered_button("Display using BSP", ["b"], this.toggle_bsp);
@@ -508,9 +511,9 @@ export class Bsp_Demo extends Scene {
         this.new_line();
         this.new_line();
         this.control_panel.innerHTML += "Click to change settings:<br>";
-//        this.key_triggered_button("Cycle BSP mode", ["g"], this.next_bsp_mode);
-//        this.live_string(box => box.textContent = "- Current BSP mode: " + this.cur_bsp_mode_name());
-//        this.new_line();
+        this.key_triggered_button("Cycle BSP cull level", ["c"], this.next_bsp_cull_level);
+        this.live_string(box => box.textContent = "- Current BSP cull level: " + this.cur_bsp_cull_level());
+        this.new_line();
         this.key_triggered_button("Toggle BSP coloring", ["g"], this.toggle_bsp_coloring);
         this.live_string(box => box.textContent = "- BSP coloring: " + this.bsp_coloring);
         this.new_line();
@@ -597,9 +600,7 @@ export class Bsp_Demo extends Scene {
         ;
 
         if (this.cur_lod == 1) {
-            // move up the lowpolytree model a bit
             mt_cloud = mt_cloud.times(Mat4.scale(3, 3, 3));
-
             this.shapes.cloud.draw(context, program_state, mt_cloud, material);
         }
         else {
@@ -616,13 +617,21 @@ export class Bsp_Demo extends Scene {
         console.log('camera_fov: ' + camera_fov);
 
         let in_view_cells = this.bsp_query.in_fov_of(this.bsp_root, camera_pos, camera_dir, camera_fov);
-        console.log('in_fov_cells length: ' + in_view_cells.length);
+        console.log('in_view_cells length: ' + in_view_cells.length);
 
-        console.log('cells: ');
+        console.log('in_view_cells: ');
         console.log(in_view_cells);
 
         for (let node of in_view_cells) {
             for (let polyg of node.polygons) {
+                if (this.bsp_cull_level == 1) {
+                    let dist = bsp.dist(camera_pos, polyg.p);
+                    //console.log('render_using_bsp: dist: ' + dist);
+                    if (dist > this.bsp_cull_dist) {
+                        continue;
+                    }
+                }
+
                 if (polyg.type == 'tree') {
                     this.render_tree(context, program_state, polyg,
                         this.bsp_coloring ? this.colors[node.color] : this.materials[polyg.material]);
@@ -634,6 +643,7 @@ export class Bsp_Demo extends Scene {
             }
         }
 
+        // render bsp cell centers:
         let stack = [this.bsp_root];
         while (stack.length > 0) {
             let node = stack.shift();
@@ -665,20 +675,20 @@ export class Bsp_Demo extends Scene {
         let sun_pos = vec3(-10, 10, -10);
 
         // The parameters of the Light are: position, color, size
-        //program_state.lights = [new Light(vec4(sun_pos[0],sun_pos[1],sun_pos[2],1), hex_color('#FFFF00'), light_size)];
+        program_state.lights = [new Light(vec4(sun_pos[0],sun_pos[1],sun_pos[2],1), hex_color('#FFFF00'), light_size)];
 
         // The position of the light
-        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
-        //this.light_position = Mat4.rotation(t / 1500, 0, 1, 0).times(vec4(3, 6, 0, 1));
-        // The color of the light
-        this.light_color = color(1, 1, 1, 1);
-
-        // This is a rough target of the light.
-        // Although the light is point light, we need a target to set the POV of the light
-        this.light_view_target = vec4(0, 0, 0, 1);
-        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
-
-        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
+//        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
+//        //this.light_position = Mat4.rotation(t / 1500, 0, 1, 0).times(vec4(3, 6, 0, 1));
+//        // The color of the light
+//        this.light_color = color(1, 1, 1, 1);
+//
+//        // This is a rough target of the light.
+//        // Although the light is point light, we need a target to set the POV of the light
+//        this.light_view_target = vec4(0, 0, 0, 1);
+//        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
+//
+//        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
 
 
         // do objects
