@@ -10,8 +10,11 @@ import {Text_Demo} from "./examples/text-demo.js"
 import {Transforms_Sandbox} from "./examples/transforms-sandbox.js"
 import {Shadow_Demo} from "./examples/shadow-demo.js"
 import {Tree_Demo} from "./examples/tree-demo.js"
+import {Shadow_Test} from "./project/shadow-test.js"
+import { Bsp_Demo } from './project/bsp-demo.js';
+import {Tree_File_Demo} from "./project/tree-obj-conv.js"
 
-import {Bsp_Demo} from "./project/bsp-demo.js"
+//import {Bsp_Demo} from "./project/bsp-demo.js"
 
 // Pull these names into this module's scope for convenience:
 const {
@@ -46,8 +49,8 @@ Object.assign(defs,
 // (Can define Main_Scene's class here)
 
 
-//const Main_Scene = Tree_Demo;
-const Main_Scene = Bsp_Demo; //swap scenes to switch main scene
+const Main_Scene = Obj_File_Demo;
+//const Main_Scene = Bsp_Demo; //swap scenes to switch main scene
 //const Main_Scene = Control_Demo; //swap scenes to switch main scene
 //const Main_Scene = Collision_Demo; //swap scenes to switch main scene
 const Additional_Scenes = [];

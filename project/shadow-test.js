@@ -1,11 +1,11 @@
-import {defs, tiny} from './common.js';
+import {defs, tiny} from './../examples/common.js';
 // Pull these names into this module's scope for convenience:
 const {vec3, vec4, vec, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
 const {Cube, Axis_Arrows, Textured_Phong, Phong_Shader, Basic_Shader, Subdivision_Sphere} = defs
 
-import {Shape_From_File} from './obj-file-demo.js'
+import {Shape_From_File} from './../examples/obj-file-demo.js'
 import {Color_Phong_Shader, Shadow_Textured_Phong_Shader,
-    Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './shadow-demo-shaders.js'
+    Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './../examples/shadow-demo-shaders.js'
 
 // 2D shape, to display the texture buffer
 const Square =
@@ -28,25 +28,15 @@ const Square =
     }
 
 // The scene
-export class Shadow_Demo extends Scene {
+export class Shadow_Test extends Scene {
     constructor() {
         super();
         // Load the model file:
         this.shapes = {
-            "teapot": new Shape_From_File("assets/teapot.obj"),
             "sphere": new Subdivision_Sphere(6),
             "cube": new Cube(),
             "square_2d": new Square(),
         };
-
-        // For the teapot
-        this.stars = new Material(new Shadow_Textured_Phong_Shader(1), {
-            color: color(.5, .5, .5, 1),
-            ambient: .4, diffusivity: .5, specularity: .5,
-            color_texture: new Texture("assets/stars.png"),
-            light_depth_texture: null
-
-        });
         // For the floor or other plain objects
         this.floor = new Material(new Shadow_Textured_Phong_Shader(1), {
             color: color(1, 1, 1, 1), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
@@ -59,11 +49,6 @@ export class Shadow_Demo extends Scene {
         // For light source
         this.light_src = new Material(new Phong_Shader(), {
             color: color(1, 1, 1, 1), ambient: 1, diffusivity: 0, specularity: 0
-        });
-        // For depth texture display
-        this.depth_tex =  new Material(new Depth_Texture_Shader_2D(), {
-            color: color(0, 0, .0, 1),
-            ambient: 1, diffusivity: 0, specularity: 0, texture: null
         });
 
         // To make sure texture initialization only does once
@@ -95,7 +80,6 @@ export class Shadow_Demo extends Scene {
         this.lightDepthTexture = gl.createTexture();
         // Bind it to TinyGraphics
         this.light_depth_texture = new Buffered_Texture(this.lightDepthTexture);
-        this.stars.light_depth_texture = this.light_depth_texture
         this.floor.light_depth_texture = this.light_depth_texture
 
         this.lightDepthTextureSize = LIGHT_DEPTH_TEX_SIZE;
@@ -172,31 +156,11 @@ export class Shadow_Demo extends Scene {
                 this.light_src.override({color: light_color}));
         }
 
-        for (let i of [-1, 1]) { // Spin the 3D model shapes as well.
-            const model_transform = Mat4.translation(2 * i, 3, 0)
-                .times(Mat4.rotation(t / 1000, -1, 2, 0))
-                .times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
-            this.shapes.teapot.draw(context, program_state, model_transform, shadow_pass? this.stars : this.pure);
-        }
-
         let model_trans_floor = Mat4.scale(8, 0.1, 5);
         let model_trans_ball_0 = Mat4.translation(0, 1, 0);
-        let model_trans_ball_1 = Mat4.translation(5, 1, 0);
-        let model_trans_ball_2 = Mat4.translation(-5, 1, 0);
-        let model_trans_ball_3 = Mat4.translation(0, 1, 3);
-        let model_trans_ball_4 = Mat4.translation(0, 1, -3);
-        let model_trans_wall_1 = Mat4.translation(-8, 2 - 0.1, 0).times(Mat4.scale(0.33, 2, 5));
-        let model_trans_wall_2 = Mat4.translation(+8, 2 - 0.1, 0).times(Mat4.scale(0.33, 2, 5));
-        let model_trans_wall_3 = Mat4.translation(0, 2 - 0.1, -5).times(Mat4.scale(8, 2, 0.33));
+
         this.shapes.cube.draw(context, program_state, model_trans_floor, shadow_pass? this.floor : this.pure);
-        this.shapes.cube.draw(context, program_state, model_trans_wall_1, shadow_pass? this.floor : this.pure);
-        this.shapes.cube.draw(context, program_state, model_trans_wall_2, shadow_pass? this.floor : this.pure);
-        this.shapes.cube.draw(context, program_state, model_trans_wall_3, shadow_pass? this.floor : this.pure);
         this.shapes.sphere.draw(context, program_state, model_trans_ball_0, shadow_pass? this.floor : this.pure);
-        this.shapes.sphere.draw(context, program_state, model_trans_ball_1, shadow_pass? this.floor : this.pure);
-        this.shapes.sphere.draw(context, program_state, model_trans_ball_2, shadow_pass? this.floor : this.pure);
-        this.shapes.sphere.draw(context, program_state, model_trans_ball_3, shadow_pass? this.floor : this.pure);
-        this.shapes.sphere.draw(context, program_state, model_trans_ball_4, shadow_pass? this.floor : this.pure);
     }
 
     display(context, program_state) {
@@ -224,14 +188,9 @@ export class Shadow_Demo extends Scene {
         }
 
         // The position of the light
-        this.light_position = Mat4.rotation(t / 1500, 0, 1, 0).times(vec4(3, 6, 0, 1));
+        this.light_position = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(3, 6, 0, 1));
         // The color of the light
-        this.light_color = color(
-            0.667 + Math.sin(t/500) / 3,
-            0.667 + Math.sin(t/1500) / 3,
-            0.667 + Math.sin(t/3500) / 3,
-            1
-        );
+        this.light_color = color(.667,.667,.667,1);
 
         // This is a rough target of the light.
         // Although the light is point light, we need a target to set the POV of the light
@@ -251,6 +210,7 @@ export class Shadow_Demo extends Scene {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer);
         gl.viewport(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
         // Prepare uniforms
         program_state.light_view_mat = light_view_mat;
         program_state.light_proj_mat = light_proj_mat;
@@ -264,7 +224,7 @@ export class Shadow_Demo extends Scene {
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         program_state.view_mat = program_state.camera_inverse;
         program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 0.5, 500);
-        this.render_scene(context, program_state, true,true, true);
+        this.render_scene(context, program_state, true, true, true);
 
 
     }

@@ -285,7 +285,8 @@ export class Bsp_Demo extends Scene {
             tree0: new TreeShape0(),
             arrow: new ArrowShape(),
             camera: new CameraShape(),
-            tree1: new Shape_From_File("assets/LowPolyTree/lowpolytree.obj"),
+            //tree1: new Shape_From_File("assets/LowPolyTree/lowpolytree.obj"),
+            tree1: new Shape_From_File("assets/Test.obj"),
             square: new Square(),
             cloud: new Shape_From_File("assets/cloud.obj"),
         };
@@ -315,10 +316,22 @@ export class Bsp_Demo extends Scene {
             //cloudy_blue: create_phong_of_color(0.62, 0.76, 0.85, 1),
             cloudy_blue: create_phong_of_color(0.74, 0.96, 1, 1),
 
-            ground: new Material(new Textured_Phong(), {
+            pure: new Material(new Color_Phong_Shader(), {
+            }),
+
+            ground: new Material(new Shadow_Textured_Phong_Shader(1), {
                 color: hex_color("#000000"),
                 ambient: 0.7, diffusivity: 0.7, specularity: 0.1,
                 texture: new Texture("assets/ground.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            floor: new Material(new Shadow_Textured_Phong_Shader(1), {
+                color: color(1, 1, 1, 1), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
+                color_texture: null,
+                light_depth_texture: null,
+                texture: new Texture("assets/ground.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            light_src: new Material(new Phong_Shader(), {
+                color: color(1, 1, 1, 1), ambient: 1, diffusivity: 0, specularity: 0
             }),
             tree: create_phong_of_color(0.1, 0.6, 0.1, 1, 0.5, 0.6, 0.4),
             cloud: create_phong_of_color(0.65, 0.95, 0.95, 1),
@@ -397,6 +410,8 @@ export class Bsp_Demo extends Scene {
         for (let cloud of this.clouds) {
             this.bsp_root.push(cloud);
         }
+
+        this.init_ok = false;
 
         console.log(''+this.bsp_root);
     }
@@ -662,12 +677,17 @@ export class Bsp_Demo extends Scene {
         }
     }
 
-    render_scene(context, program_state) {
+    render_scene(context, program_state, second_pass) {
         //
         // Perform all necessary calculations here:
         //
         const t = this.t = program_state.animation_time / 1000;
         const dt = this.dt = program_state.animation_delta_time / 1000;
+
+        let light_position = this.light_position;
+        let light_color = this.light_color;
+
+        program_state.draw_shadow = second_pass;
 
         let radius = 1.5;
         let light_size = 10**radius;
@@ -675,7 +695,7 @@ export class Bsp_Demo extends Scene {
         let sun_pos = vec3(-10, 10, -10);
 
         // The parameters of the Light are: position, color, size
-        program_state.lights = [new Light(vec4(sun_pos[0],sun_pos[1],sun_pos[2],1), hex_color('#FFFF00'), light_size)];
+        //program_state.lights = [new Light(vec4(sun_pos[0],sun_pos[1],sun_pos[2],1), hex_color('#FFFF00'), light_size)];
 
         // The position of the light
 //        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
@@ -692,28 +712,36 @@ export class Bsp_Demo extends Scene {
 
 
         // do objects
+        /*
         let mt_sun = Mat4.identity()
             .times(Mat4.translation(sun_pos[0], sun_pos[1], sun_pos[2]))       // step 2:  move
             .times(Mat4.scale(radius, radius, radius))   // step 1:  scale
         ;
-        this.shapes.sun.draw(context, program_state, mt_sun, this.materials.sun.override({color: sun_color}));
+        this.shapes.sun.draw(context, program_state, mt_sun, this.materials.sun.override({color: sun_color}));*/
 
-        let mt_planet = Mat4.identity()
+        if (second_pass) {
+            this.shapes.sphere.draw(context, program_state,
+                Mat4.translation(light_position[0], light_position[1], light_position[2]).times(Mat4.scale(.5,.5,.5)),
+                this.materials.light_src.override({color: light_color}));
+        }
+
+        /*let mt_planet = Mat4.identity()
             .times(Mat4.translation(sun_pos[0], sun_pos[1], sun_pos[2]))  // Step 3. Translate to sun position
             .times(Mat4.rotation(t, 0, 1, 0))  // Step 2.  rotate about sun.
             .times(Mat4.translation(5, 0, 0))  // Step 1. Translate to dist from sun.
         ;
-        this.shapes.planet1.draw(context, program_state, mt_planet, this.materials.planet1);
+        this.shapes.planet1.draw(context, program_state, mt_planet, this.materials.planet1);*/
 
         // draw ground
         let mt_floor = Mat4.scale(30, 0.1, 20);
         if (this.cur_lod == 0) {
-            this.shapes.floor.draw(context, program_state, mt_floor, this.materials.gray);
+            this.shapes.floor.draw(context, program_state, mt_floor, this.materials.floor);
         }
         else {
-            this.shapes.floor.draw(context, program_state, mt_floor, this.materials.ground);
+            this.shapes.floor.draw(context, program_state, mt_floor, this.materials.floor);
         }
 
+        /*
         // draw static clouds
         for (let cloud of this.static_clouds) {
             let mt_cloud = Mat4.identity()
@@ -721,14 +749,18 @@ export class Bsp_Demo extends Scene {
                 .times(Mat4.scale(3, 3, 3))
             ;
             this.shapes.cloud.draw(context, program_state, mt_cloud, this.materials.cloudy_blue);
-        }
+        }*/
 
         // draw player
-        if (this.cur_camera != 1) {
+        /*if (this.cur_camera != 1) {
             this.render_player(context, program_state);
-        }
+        }*/
+
+        //let model_trans_ball_0 = Mat4.translation(0, 2, 0);
+        //this.shapes.tree1.draw(context, program_state, model_trans_ball_0, second_pass? this.materials.floor : this.materials.pure);
 
         // draw bsp objs
+        
         if (this.bsp_on) {
             this.render_using_bsp(context, program_state);
         }
@@ -744,6 +776,19 @@ export class Bsp_Demo extends Scene {
 
 
     display(context, program_state) {
+        const t = program_state.animation_time;
+        const gl = context.context;
+
+        if (!this.init_ok) {
+            const ext = gl.getExtension('WEBGL_depth_texture');
+            if (!ext) {
+                return alert('need WEBGL_depth_texture');  // eslint-disable-line
+            }
+            this.texture_buffer_init(gl);
+
+            this.init_ok = true;
+        }
+
         // display():  Called once per frame of animation.
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
@@ -752,10 +797,44 @@ export class Bsp_Demo extends Scene {
             program_state.set_camera(this.global_camera_location);
         }
 
+        // The position of the light
+        this.light_position = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(3, 10, 0, 1));
+        // The color of the light
+        this.light_color = color(.667,.667,.667,1);
+
+        // This is a rough target of the light.
+        // Although the light is point light, we need a target to set the POV of the light
+        this.light_view_target = vec4(0, 0, 0, 1);
+        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
+
+        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
+
+        // Step 1: set the perspective and camera to the POV of light
+        const light_view_mat = Mat4.look_at(
+            vec3(this.light_position[0], this.light_position[1], this.light_position[2]),
+            vec3(this.light_view_target[0], this.light_view_target[1], this.light_view_target[2]),
+            vec3(0, 1, 0), // assume the light to target will have a up dir of +y, maybe need to change according to your case
+        );
+        const light_proj_mat = Mat4.perspective(this.light_field_of_view, 1, 0.5, 500);
+        // Bind the Depth Texture Buffer
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer);
+        gl.viewport(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // Prepare uniforms
+        program_state.light_view_mat = light_view_mat;
+        program_state.light_proj_mat = light_proj_mat;
+        program_state.light_tex_mat = light_proj_mat;
+        program_state.view_mat = light_view_mat;
+        program_state.projection_transform = light_proj_mat;
+        this.render_scene(context, program_state, false);
+
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
         if (this.switch_camera) {
             this._prev_camera_transform = context.scratchpad.controls.inverse();
-//            console.log('prev camera transform');
-//            console.log(this._prev_camera_transform);
             if (this.cur_camera == 1) {
                 program_state.set_camera(this.camera.matrix());
             }
@@ -775,6 +854,7 @@ export class Bsp_Demo extends Scene {
 //        program_state.projection_transform = Mat4.perspective(
 //            Math.PI / 4, context.width / context.height, .1, 1000);
 //        console.log('context.width: ' + context.width + ', height: ' + context.height);
+        program_state.view_mat = program_state.camera_inverse;
         if (this.cur_camera == 0) {
             program_state.projection_transform = Mat4.perspective(
                 45 * (Math.PI/180), context.width / context.height, .1, 1000);
@@ -785,7 +865,71 @@ export class Bsp_Demo extends Scene {
         }
 
         // Render scene
-        this.render_scene(context, program_state);
+        this.render_scene(context, program_state, true);
+    }
+
+    texture_buffer_init(gl) {
+        // Depth Texture
+        this.lightDepthTexture = gl.createTexture();
+        // Bind it to TinyGraphics
+        this.light_depth_texture = new Buffered_Texture(this.lightDepthTexture);
+        this.materials.floor.light_depth_texture = this.light_depth_texture;
+
+        this.lightDepthTextureSize = LIGHT_DEPTH_TEX_SIZE;
+        gl.bindTexture(gl.TEXTURE_2D, this.lightDepthTexture);
+        gl.texImage2D(
+            gl.TEXTURE_2D,      // target
+            0,                  // mip level
+            gl.DEPTH_COMPONENT, // internal format
+            this.lightDepthTextureSize,   // width
+            this.lightDepthTextureSize,   // height
+            0,                  // border
+            gl.DEPTH_COMPONENT, // format
+            gl.UNSIGNED_INT,    // type
+            null);              // data
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        // Depth Texture Buffer
+        this.lightDepthFramebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,       // target
+            gl.DEPTH_ATTACHMENT,  // attachment point
+            gl.TEXTURE_2D,        // texture target
+            this.lightDepthTexture,         // texture
+            0);                   // mip level
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        // create a color texture of the same size as the depth texture
+        // see article why this is needed_
+        this.unusedTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.unusedTexture);
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            this.lightDepthTextureSize,
+            this.lightDepthTextureSize,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            null,
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        // attach it to the framebuffer
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,        // target
+            gl.COLOR_ATTACHMENT0,  // attachment point
+            gl.TEXTURE_2D,         // texture target
+            this.unusedTexture,         // texture
+            0);                    // mip level
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
 }
