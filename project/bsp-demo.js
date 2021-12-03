@@ -367,6 +367,7 @@ export class Bsp_Demo extends Scene {
         this.create_trees(-20, 0, 0);
         this.create_trees(0, 0, 0);
         this.create_trees(20, 0, 0);
+        this.create_trees(15, 0, 15);
 
         // object list of static clouds
         this.static_clouds = [];
@@ -384,7 +385,7 @@ export class Bsp_Demo extends Scene {
             this.create_clouds(3, 0, 8, -10, this.CLOUD_ID),
             this.create_clouds(2, 5, 7, -3, this.CLOUD_ID+3)
         );
-        this.CLOUD_ID += 5;
+        this.CLOUD_ID += (3+2);
 
         // zoom the floor out
         for (let i = 0; i < this.shapes.floor.arrays.texture_coord.length; i++) {
@@ -607,12 +608,15 @@ export class Bsp_Demo extends Scene {
     render_tree(context, program_state, tree, material, second_pass) {
         let mt_tree = Mat4.identity()
             .times(Mat4.translation(tree.p[0], tree.p[1], tree.p[2]))
-            .times(Mat4.translation(0, 1.75, 0)).times(Mat4.rotation(3*Math.PI/2, 1, 0, 0));
         ;
 
         if (this.cur_lod == 1) {
             // move up the lowpolytree model a bit
-            mt_tree = mt_tree.times(Mat4.translation(0, 1.5, 0));
+            mt_tree = mt_tree
+                .times(Mat4.translation(0, 1.75, 0))
+                .times(Mat4.rotation(3*Math.PI/2, 1, 0, 0))
+                .times(Mat4.translation(0, 1.5, 0))
+            ;
 
             this.shapes.tree1.draw(context, program_state, mt_tree, second_pass? material : this.materials.pure);
         }
@@ -697,6 +701,37 @@ export class Bsp_Demo extends Scene {
 
         // draw player
         this.render_player(context, program_state, second_pass);
+
+        // draw bsp objs
+        if (this.bsp_on) {
+            this.render_using_bsp(context, program_state, second_pass);
+        }
+        else {
+            for (let tree of this.trees) {
+                this.render_tree(context, program_state, tree, this.materials[tree.material], second_pass);
+            }
+            for (let cloud of this.clouds) {
+                this.render_cloud(context, program_state, cloud, this.materials[cloud.material], second_pass);
+            }
+        }
+    }
+
+    render_mm2(context, program_state, render_player) {
+        let second_pass = true;
+
+        // draw player
+        if (render_player) {
+            this.render_player(context, program_state, second_pass);
+        }
+
+        // draw ground
+        let mt_floor = Mat4.scale(30, 0.1, 20);
+        if (this.cur_lod == 0) {
+            this.shapes.floor.draw(context, program_state, mt_floor, this.materials.gray);
+        }
+        else {
+            this.shapes.floor.draw(context, program_state, mt_floor, this.materials.gray);
+        }
 
         // draw bsp objs
         if (this.bsp_on) {
@@ -802,11 +837,6 @@ export class Bsp_Demo extends Scene {
     }
 
 
-    render_current_camera(context, program_state) {
-
-    }
-
-
     display(context, program_state) {
         const t = program_state.animation_time;
         const gl = context.context;
@@ -904,19 +934,25 @@ export class Bsp_Demo extends Scene {
         program_state.set_camera(this.mm_camera_location);
         this.render_mm(context, program_state);
 
-//        // Render off-camera
-//        gl.viewport(15*2+this.mm_width, 5, this.mm_width, this.mm_height);
-//        gl.scissor(15*2+this.mm_width, 5, this.mm_width, this.mm_height);
-//        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-//        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-//        if (this.cur_camera == 1) {
-//            program_state.set_camera(this.global_camera_location);
-//            this.render_scene(context, program_state, true, 0);
-//        }
-//        else if (this.cur_camera == 0) {
-//            program_state.set_camera(this.camera.matrix());
-//            this.render_scene(context, program_state, true, 3);
-//        }
+        // Render off-camera
+        gl.viewport(15*2+this.mm_width, 5, this.mm_width*1.75, this.mm_height);
+        gl.scissor(15*2+this.mm_width, 5, this.mm_width*1.75, this.mm_height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        if (this.cur_camera == 1) {
+            program_state.set_camera(this.global_camera_location);
+        }
+        else if (this.cur_camera == 0) {
+            program_state.set_camera(this.camera.matrix());
+        }
+        this.render_mm2(context, program_state, this.cur_camera == 1);
+
+
+        // Set the program_state camera back to global so that WASD global keys work properly for the global camera
+        if (this.cur_camera == 0) {
+            program_state.set_camera(this.global_camera_location);
+        }
+
     }
 
 
