@@ -692,6 +692,26 @@ export class Bsp_Demo extends Scene {
 
     }
 
+    render_mm(context, program_state) {
+        let second_pass = true;
+
+        // draw player
+        this.render_player(context, program_state, second_pass);
+
+        // draw bsp objs
+        if (this.bsp_on) {
+            this.render_using_bsp(context, program_state, second_pass);
+        }
+        else {
+            for (let tree of this.trees) {
+                this.render_tree(context, program_state, tree, this.materials[tree.material], second_pass);
+            }
+            for (let cloud of this.clouds) {
+                this.render_cloud(context, program_state, cloud, this.materials[cloud.material], second_pass);
+            }
+        }
+    }
+
     render_scene(context, program_state, second_pass) {
         //
         // Perform all necessary calculations here:
@@ -767,11 +787,7 @@ export class Bsp_Demo extends Scene {
             this.render_player(context, program_state, second_pass);
         }
 
-        //let model_trans_ball_0 = Mat4.translation(0, 1.5, 0).times(Mat4.rotation(3*Math.PI/2, 1, 0, 0));
-        //this.shapes.tree1.draw(context, program_state, model_trans_ball_0, second_pass? this.materials.floor : this.materials.pure);
-
         // draw bsp objs
-
         if (this.bsp_on) {
             this.render_using_bsp(context, program_state, second_pass);
         }
@@ -794,6 +810,8 @@ export class Bsp_Demo extends Scene {
     display(context, program_state) {
         const t = program_state.animation_time;
         const gl = context.context;
+
+        gl.enable(gl.SCISSOR_TEST);
 
         if (!this.init_ok) {
             const ext = gl.getExtension('WEBGL_depth_texture');
@@ -835,6 +853,7 @@ export class Bsp_Demo extends Scene {
         // Bind the Depth Texture Buffer
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer);
         gl.viewport(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
+        gl.scissor(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         // Prepare uniforms
@@ -847,23 +866,14 @@ export class Bsp_Demo extends Scene {
 
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.clearColor(0, 0, 0, 1.0);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.scissor(0, 0, gl.canvas.width, gl.canvas.height);
 
-        if (this.switch_camera) {
-            this._prev_camera_transform = context.scratchpad.controls.inverse();
-            if (this.cur_camera == 1) {
-                program_state.set_camera(this.camera.matrix());
-            }
-            else {
-                if (context.scratchpad.controls.matrix) {
-                    // common.js Movement_Controls applies a closure to modify the matrix, so this is saved here:
-                    program_state.set_camera(this.global_camera_location);
-                }
-            }
-            this.switch_camera = false;
+        if (this.cur_camera == 0) {
+            program_state.set_camera(this.global_camera_location);
         }
-
-        if (this.cur_camera == 1) {
+        else if (this.cur_camera == 1) {
             program_state.set_camera(this.camera.matrix());
         }
 
@@ -881,7 +891,32 @@ export class Bsp_Demo extends Scene {
         }
 
         // Render scene
+        gl.scissor(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         this.render_scene(context, program_state, true);
+
+        // Render map
+        gl.viewport(15, 5, this.mm_width, this.mm_height);
+        gl.scissor(15, 5, this.mm_width, this.mm_height);
+        gl.clearColor(0.5, 0.5, 0.5, 1.0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        program_state.set_camera(this.mm_camera_location);
+        this.render_mm(context, program_state);
+
+//        // Render off-camera
+//        gl.viewport(15*2+this.mm_width, 5, this.mm_width, this.mm_height);
+//        gl.scissor(15*2+this.mm_width, 5, this.mm_width, this.mm_height);
+//        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+//        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+//        if (this.cur_camera == 1) {
+//            program_state.set_camera(this.global_camera_location);
+//            this.render_scene(context, program_state, true, 0);
+//        }
+//        else if (this.cur_camera == 0) {
+//            program_state.set_camera(this.camera.matrix());
+//            this.render_scene(context, program_state, true, 3);
+//        }
     }
 
 
