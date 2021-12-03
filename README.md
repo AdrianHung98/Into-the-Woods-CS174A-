@@ -1,9 +1,9 @@
 # Into the Woods -- BSP Frustum-Culling Demo
 
 
-CS174A Fall 2021 Project, UCLA
+**CS174A Fall 2021 Project, UCLA**
 
-Team members:
+*Team members:*
 
 - Nurrachman Liu (rachliu@cs.ucla.edu)
 - Adrian Hung
@@ -33,7 +33,8 @@ To turn down LOD (level of detail), hit `u`.
 - The off-camera viewport (bottom, right) shows the off-main camera's perspective.
 
 
-**Full keys:**
+**All Keys:**
+
 *BSP-control:*
 - `b`:  Toggle BSP culling on/off.
 - `n`:  Split the BSP by 1 level.
