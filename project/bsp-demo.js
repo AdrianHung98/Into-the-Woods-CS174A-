@@ -672,7 +672,7 @@ export class Bsp_Demo extends Scene {
 
     }
 
-    render_scene(context, program_state, mm=false) {
+    render_scene(context, program_state, camera) {
         //
         // Perform all necessary calculations here:
         //
@@ -688,7 +688,8 @@ export class Bsp_Demo extends Scene {
 //        program_state.lights = [new Light(vec4(sun_pos[0],sun_pos[1],sun_pos[2],1), hex_color('#FFFF00'), light_size)];
 
         // The position of the light
-        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
+        //this.light_position = this.light_position = vec4(-3, 6, 3, 1);
+        this.light_position = this.light_position = vec4(0, 10, 10, 1);
         //this.light_position = Mat4.rotation(t / 1500, 0, 1, 0).times(vec4(3, 6, 0, 1));
         // The color of the light
         this.light_color = color(1, 1, 1, 1);
@@ -734,7 +735,7 @@ export class Bsp_Demo extends Scene {
         }
 
         // draw player
-        if (this.cur_camera != 1 || mm) {
+        if (camera != 1) {
             this.render_player(context, program_state);
         }
 
@@ -788,11 +789,11 @@ export class Bsp_Demo extends Scene {
 //            this.switch_camera = false;
 //        }
 
-        if (this.cur_camera == 1) {
-            program_state.set_camera(this.camera.matrix());
-        }
-        else if (this.cur_camera == 0) {
+        if (this.cur_camera == 0) {
             program_state.set_camera(this.global_camera_location);
+        }
+        else if (this.cur_camera == 1) {
+            program_state.set_camera(this.camera.matrix());
         }
 
         // Draw to the canvas
@@ -815,25 +816,28 @@ export class Bsp_Demo extends Scene {
         }
 
         // Render scene
-        this.render_scene(context, program_state);
+        this.render_scene(context, program_state, this.cur_camera);
 
         // Render map
         gl.viewport(15, 5, this.mm_width, this.mm_height);
         gl.scissor(15, 5, this.mm_width, this.mm_height);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-//        program_state.set_camera(this.camera.matrix());
         program_state.set_camera(this.mm_camera_location);
-        this.render_scene(context, program_state, true);
+        this.render_scene(context, program_state, 3);
 
+        // Render off-camera
         gl.viewport(15*2+this.mm_width, 5, this.mm_width, this.mm_height);
         gl.scissor(15*2+this.mm_width, 5, this.mm_width, this.mm_height);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-//        program_state.set_camera(this.camera.matrix());
-        program_state.set_camera(this.mm_camera_location);
-        this.render_scene(context, program_state, true);
-//        program_state.set_camera(this.global_camera_location);
+        if (this.cur_camera == 1) {
+            program_state.set_camera(this.global_camera_location);
+        }
+        else if (this.cur_camera == 0) {
+            program_state.set_camera(this.camera.matrix());
+        }
+        this.render_scene(context, program_state, 3);
 
     }
 
