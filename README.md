@@ -13,6 +13,19 @@ This is a demo for BSP-based frustum-culling. It contains a user-interactable BS
 
 ![main](./docs/main.png)
 
+**Features:**
+
+- Frustum-culling using BSP-data structure
+- Interactable BSP-culling (cull levels, toggle culling on/off, change BSP-cull levels)
+- Global camera that full illustrates the player's current FOV
+- Player camera
+- Multiple viewports (top-down 'map' and off-camera viewport)
+- Interactable player
+- Shadows
+
+
+**Instructions:**
+
 To observe the difference between frustum-culling vs no-culling (regular), culling can be turned on/off (key press `b`).
 
 The interactive player can be moved around (`IJKL` for translation, `QE` for left/right rotation, and `YH` for up/down tilt), independently of the default ('global') camera (`WASD`).
