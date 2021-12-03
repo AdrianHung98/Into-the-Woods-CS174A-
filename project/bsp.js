@@ -1,4 +1,6 @@
 
+// @author rliu 2021-11
+
 // i had to use this commonjs before switching nodejs to use es6 syntax through package.json in this dir and parent dir.
 //require('./tiny-graphics-copy.js');
 
