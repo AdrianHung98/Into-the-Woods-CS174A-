@@ -17,7 +17,7 @@ This is a demo for BSP-based frustum-culling. It contains a user-interactable BS
 
 - Frustum-culling using BSP-data structure
 - Interactable BSP-culling (cull levels, toggle culling on/off, change BSP-cull levels)
-- Global camera that full illustrates the player's current FOV
+- Global camera that fully illustrates the player's current FOV
 - Player camera
 - Multiple viewports (top-down 'map' and off-camera viewport)
 - Interactable player
