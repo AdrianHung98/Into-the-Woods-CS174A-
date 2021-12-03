@@ -753,6 +753,7 @@ const Textured_Phong = defs.Textured_Phong =
             return this.shared_glsl_code() + `
                 varying vec2 f_tex_coord;
                 uniform sampler2D texture;
+                uniform bool draw_shadow;
         
                 void main(){
                     // Sample the texture image in the correct place:
@@ -762,12 +763,50 @@ const Textured_Phong = defs.Textured_Phong =
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                                                                              // Compute the final color with contributions from lights:
                     gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+
+                    // Deal with shadow:
+                    if (draw_shadow) {
+                        vec4 light_tex_coord = (light_proj_mat * light_view_mat * vec4(vertex_worldspace, 1.0));
+                        // convert NDCS from light's POV to light depth texture coordinates
+                        light_tex_coord.xyz /= light_tex_coord.w;
+                        light_tex_coord.xyz *= 0.5;
+                        light_tex_coord.xyz += 0.5;
+                        float light_depth_value = texture2D( light_depth_texture, light_tex_coord.xy ).r;
+                        float projected_depth = light_tex_coord.z;
+
+                        bool inRange =
+                            light_tex_coord.x >= 0.0 &&
+                            light_tex_coord.x <= 1.0 &&
+                            light_tex_coord.y >= 0.0 &&
+                            light_tex_coord.y <= 1.0;
+
+                        float shadowness = PCF_shadow(light_tex_coord.xy, projected_depth);
+
+                        if (inRange && shadowness > 0.3) {
+                            diffuse *= 0.2 + 0.8 * (1.0 - shadowness);
+                            specular *= 1.0 - shadowness;
+                        }
+                    }
                   } `;
         }
 
         update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
             // update_GPU(): Add a little more to the base class's version of this method.
             super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
+
+            if (gpu_state.draw_shadow) {
+                context.uniform1i(gpu_addresses.draw_shadow, 1);
+                context.uniform1f(gpu_addresses.light_depth_bias, 0.003);
+                context.uniform1f(gpu_addresses.light_texture_size, LIGHT_DEPTH_TEX_SIZE);
+                context.uniform1i(gpu_addresses.light_depth_texture, 1); // 1 for light-view depth texture}
+                if (material.light_depth_texture && material.light_depth_texture.ready) {
+                    context.activeTexture(context["TEXTURE" + 1]);
+                    material.light_depth_texture.activate(context, 1);
+                }
+            }
+            else {
+                context.uniform1i(gpu_addresses.draw_shadow, 0);
+            }
 
             if (material.texture && material.texture.ready) {
                 // Select texture unit 0 for the fragment shader Sampler2D uniform called "texture":

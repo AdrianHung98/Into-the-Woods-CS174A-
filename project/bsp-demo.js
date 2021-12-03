@@ -319,7 +319,7 @@ export class Bsp_Demo extends Scene {
             pure: new Material(new Color_Phong_Shader(), {
             }),
 
-            ground: new Material(new Shadow_Textured_Phong_Shader(1), {
+            ground: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
                 ambient: 0.7, diffusivity: 0.7, specularity: 0.1,
                 texture: new Texture("assets/ground.jpg", "LINEAR_MIPMAP_LINEAR")
@@ -350,7 +350,7 @@ export class Bsp_Demo extends Scene {
 
         this.switch_camera = false;
         this.cur_camera = 0;
-        this.camera = new Camera(vec3(0, 1, 15), -Math.PI/2, 0, vec3(0, 1, 0), 45);
+        this.camera = new Camera(vec3(0, 0, 15), -Math.PI/2, 0, vec3(0, 1, 0), 45);
 
         this.cur_lod = 1;
 
@@ -420,8 +420,8 @@ export class Bsp_Demo extends Scene {
      * Create a clump of trees starting at the given x,y,z position
      */
     create_trees(x, y, z) {
-        let n = 5;
-        let m = 5;
+        let n = 3;
+        let m = 3;
         let TREE_W = this.shapes.tree0.tree_w;
         let TREE_D = this.shapes.tree0.tree_d;
         let TREE_SP_X = 2;
@@ -554,13 +554,13 @@ export class Bsp_Demo extends Scene {
         this.key_triggered_button("Rotate down", ["h"], this.camera_func_call('rot_down'));
     }
 
-    render_player(context, program_state) {
+    render_player(context, program_state, second_pass) {
         let mt_camera = Mat4.identity()
             .times(Mat4.translation(this.camera.eye[0], this.camera.eye[1], this.camera.eye[2]))
             .times(Mat4.rotation(-this.camera.yaw, 0, 1, 0))
 //            .times(Mat4.rotation(this.camera.pitch, 0, 0, 1)) // don't rotate the player body along the pitch
         ;
-        this.shapes.camera.draw(context, program_state, mt_camera, this.materials.gray);
+        this.shapes.camera.draw(context, program_state, mt_camera, second_pass? this.materials.gray : this.materials.pure);
 
         let mt_arrow = mt_camera
             .times(Mat4.translation(0, 1.5, 0))
@@ -568,8 +568,9 @@ export class Bsp_Demo extends Scene {
             .times(Mat4.translation(1.0, 0.0, 0))
             .times(Mat4.rotation(-Math.PI/2, 0, 0, 1))
         ;
-        this.shapes.arrow.draw(context, program_state, mt_arrow, this.materials.gray);
+        this.shapes.arrow.draw(context, program_state, mt_arrow, second_pass? this.materials.gray : this.materials.pure);
 
+        if (second_pass) {
         let mt_fov_left = Mat4.identity()
             .times(Mat4.translation(this.camera.eye[0], this.camera.eye[1], this.camera.eye[2]))
             .times(Mat4.translation(-0.25, 1.5, 0))
@@ -591,25 +592,28 @@ export class Bsp_Demo extends Scene {
             .times(Mat4.translation(1, 0, 0))
         ;
         this.shapes.square.draw(context, program_state, mt_fov_right, this.materials.transparent_yellow);
+        }
     }
 
-    render_tree(context, program_state, tree, material) {
+    render_tree(context, program_state, tree, material, second_pass) {
         let mt_tree = Mat4.identity()
             .times(Mat4.translation(tree.p[0], tree.p[1], tree.p[2]))
+            .times(Mat4.translation(0, 1.75, 0)).times(Mat4.rotation(3*Math.PI/2, 1, 0, 0));
         ;
 
         if (this.cur_lod == 1) {
             // move up the lowpolytree model a bit
             mt_tree = mt_tree.times(Mat4.translation(0, 1.5, 0));
 
-            this.shapes.tree1.draw(context, program_state, mt_tree, material);
+            this.shapes.tree1.draw(context, program_state, mt_tree, second_pass? material : this.materials.pure);
         }
         else {
-            this.shapes.tree0.draw(context, program_state, mt_tree, material);
+            this.shapes.tree0.draw(context, program_state, mt_tree, second_pass? material : this.materials.pure);
         }
     }
 
-    render_cloud(context, program_state, cloud, material) {
+    render_cloud(context, program_state, cloud, material, second_pass) {
+        if (!second_pass) return;
         let mt_cloud = Mat4.identity()
             .times(Mat4.translation(cloud.p[0], cloud.p[1], cloud.p[2]))
         ;
@@ -623,7 +627,7 @@ export class Bsp_Demo extends Scene {
         }
     }
 
-    render_using_bsp(context, program_state) {
+    render_using_bsp(context, program_state, second_pass) {
         let camera_pos = this.get_camera_pos();
         let camera_dir = this.get_camera_dir();
         let camera_fov = this.camera.fov;
@@ -649,11 +653,11 @@ export class Bsp_Demo extends Scene {
 
                 if (polyg.type == 'tree') {
                     this.render_tree(context, program_state, polyg,
-                        this.bsp_coloring ? this.colors[node.color] : this.materials[polyg.material]);
+                        this.bsp_coloring ? this.colors[node.color] : this.materials[polyg.material], second_pass);
                 }
                 else if (polyg.type == 'cloud') {
                     this.render_cloud(context, program_state, polyg,
-                        this.bsp_coloring ? this.colors[node.color] : this.materials[polyg.material]);
+                        this.bsp_coloring ? this.colors[node.color] : this.materials[polyg.material], second_pass);
                 }
             }
         }
@@ -666,7 +670,8 @@ export class Bsp_Demo extends Scene {
                 let mt_center = Mat4.identity()
                     .times(Mat4.translation(node.center[0], node.center[1]+2, node.center[2]))
                 ;
-                this.shapes.sphere.draw(context, program_state, mt_center, this.colors[node.color]);
+                if (second_pass)
+                    this.shapes.sphere.draw(context, program_state, mt_center, this.colors[node.color]);
             }
             if (node.front) {
                 stack.push(node.front);
@@ -741,35 +746,37 @@ export class Bsp_Demo extends Scene {
             this.shapes.floor.draw(context, program_state, mt_floor, this.materials.floor);
         }
 
-        /*
+        
         // draw static clouds
-        for (let cloud of this.static_clouds) {
-            let mt_cloud = Mat4.identity()
-                .times(Mat4.translation(cloud.p[0], cloud.p[1], cloud.p[2]))
-                .times(Mat4.scale(3, 3, 3))
-            ;
-            this.shapes.cloud.draw(context, program_state, mt_cloud, this.materials.cloudy_blue);
-        }*/
+        if (second_pass) {
+            for (let cloud of this.static_clouds) {
+                let mt_cloud = Mat4.identity()
+                    .times(Mat4.translation(cloud.p[0], cloud.p[1], cloud.p[2]))
+                    .times(Mat4.scale(3, 3, 3))
+                ;
+                this.shapes.cloud.draw(context, program_state, mt_cloud, this.materials.cloudy_blue);
+            }
+        }
 
         // draw player
-        /*if (this.cur_camera != 1) {
-            this.render_player(context, program_state);
-        }*/
+        if (this.cur_camera != 1) {
+            this.render_player(context, program_state, second_pass);
+        }
 
-        //let model_trans_ball_0 = Mat4.translation(0, 2, 0);
+        //let model_trans_ball_0 = Mat4.translation(0, 1.5, 0).times(Mat4.rotation(3*Math.PI/2, 1, 0, 0));
         //this.shapes.tree1.draw(context, program_state, model_trans_ball_0, second_pass? this.materials.floor : this.materials.pure);
 
         // draw bsp objs
         
         if (this.bsp_on) {
-            this.render_using_bsp(context, program_state);
+            this.render_using_bsp(context, program_state, second_pass);
         }
         else {
             for (let tree of this.trees) {
-                this.render_tree(context, program_state, tree, this.materials[tree.material]);
+                this.render_tree(context, program_state, tree, this.materials[tree.material], second_pass);
             }
             for (let cloud of this.clouds) {
-                this.render_cloud(context, program_state, cloud, this.materials[cloud.material]);
+                this.render_cloud(context, program_state, cloud, this.materials[cloud.material], second_pass);
             }
         }
     }
@@ -798,14 +805,14 @@ export class Bsp_Demo extends Scene {
         }
 
         // The position of the light
-        this.light_position = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(3, 10, 0, 1));
+        this.light_position = Mat4.identity().times(vec4(10, 10, 0, 1));
         // The color of the light
         this.light_color = color(.667,.667,.667,1);
 
         // This is a rough target of the light.
         // Although the light is point light, we need a target to set the POV of the light
-        this.light_view_target = vec4(0, 0, 0, 1);
-        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
+        this.light_view_target = vec4(1, 1, 0, 1);
+        this.light_field_of_view = 150 * Math.PI / 180; // 130 degree
 
         program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
 

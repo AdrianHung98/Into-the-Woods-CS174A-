@@ -143,10 +143,11 @@ export class Obj_File_Demo extends Scene {                           // **Obj_Fi
             color(1, .7, .7, 1), 100000)];
 
         for (let i of [-1, 1]) {                                       // Spin the 3D model shapes as well.
-            const model_transform = Mat4.rotation(t / 2000, 0, 1, 0);
+            const model_transform = Mat4.rotation(4.8, 1, 0, 0);
                 //.times(Mat4.translation(2 * i, 0, 0))
                 //.times(Mat4.rotation(t / 1500, -1, 2, 0))
                 //.times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
+            console.log(t/2000);
             this.shapes.teapot.draw(context, program_state, model_transform, i == 1 ? this.stars : this.bumps);
         }
     }

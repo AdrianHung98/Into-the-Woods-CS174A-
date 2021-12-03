@@ -49,8 +49,8 @@ Object.assign(defs,
 // (Can define Main_Scene's class here)
 
 
-const Main_Scene = Obj_File_Demo;
-//const Main_Scene = Bsp_Demo; //swap scenes to switch main scene
+//const Main_Scene = Obj_File_Demo;
+const Main_Scene = Bsp_Demo; //swap scenes to switch main scene
 //const Main_Scene = Control_Demo; //swap scenes to switch main scene
 //const Main_Scene = Collision_Demo; //swap scenes to switch main scene
 const Additional_Scenes = [];
