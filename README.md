@@ -19,6 +19,8 @@ The interactive player can be moved around (`IJKL` for translation, `QE` for lef
 
 In BSP mode, BSP cells' centers are drawn in spheres colored by cell. To color objects by their BSP cell's color instead, hit `g`.
 
+To cycle BSP-cull level, hit `c`. Default level (0) does not cull using any distance checks, while level (1) also does distance checks. Level 1 is better at very little expense (computations of distances to only log(n) objects), because it can additionally filter possibly many objects in leaves within the current FOV but that are too far away to be of any use.
+
 To turn down LOD (level of detail), hit `u`.
 
 
@@ -31,6 +33,8 @@ To turn down LOD (level of detail), hit `u`.
 
 - The overhead map (bottom left) shows the full map, the player FOV, and the culled objects.
 - The off-camera viewport (bottom, right) shows the off-main camera's perspective.
+
+![demo](./docs/demo.png)
 
 
 **All Keys:**
@@ -69,10 +73,10 @@ The application is run by lauching the local python web server `./host` or `./ho
 
 ### References
 
-https://github.com/Robert-Lu/tiny-graphics-shadow\_demo
+https://github.com/Robert-Lu/tiny-graphics-shadow_demo
 
-http://learnwebgl.brown37.net/08\_projections/projections\_viewport.html
+http://learnwebgl.brown37.net/08_projections/projections_viewport.html
 
-https://en.wikipedia.org/wiki/Binary\_space\_partitioning
+https://en.wikipedia.org/wiki/Binary_space_partitioning
 
 
