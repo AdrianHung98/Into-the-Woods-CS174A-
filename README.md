@@ -23,6 +23,8 @@ To cycle BSP-cull level, hit `c`. Default level (0) does not cull using any dist
 
 To turn down LOD (level of detail), hit `u`.
 
+- Note: the upper-right corner contains some static clouds **deliberately not** added to the BSP, in order to demonstrate the culling of clouds in the bsp as well (i.e., objecst at different heights are considered as well).
+
 
 **Example:**
 1. Split the scene several times (press `n` several times)
