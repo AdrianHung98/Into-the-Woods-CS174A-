@@ -34,7 +34,7 @@ To turn down LOD (level of detail), hit `u`.
 - The overhead map (bottom left) shows the full map, the player FOV, and the culled objects.
 - The off-camera viewport (bottom, right) shows the off-main camera's perspective.
 
-![demo](./docs/demo.png)
+![demo](./docs/demo.gif)
 
 
 **All Keys:**
