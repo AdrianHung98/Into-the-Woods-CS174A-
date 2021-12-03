@@ -17,25 +17,27 @@ const {Cube2} = defs2;
 
 import {bsp} from './bsp.js';
 
+
+
 // 2D shape, to display the texture buffer
-//const Square =
-//    class Square extends tiny.Vertex_Buffer {
-//        constructor() {
-//            super("position", "normal", "texture_coord");
-//            this.arrays.position = [
-//                vec3(0, 0, 0), vec3(1, 0, 0), vec3(0, 1, 0),
-//                vec3(1, 1, 0), vec3(1, 0, 0), vec3(0, 1, 0)
-//            ];
-//            this.arrays.normal = [
-//                vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1),
-//                vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1),
-//            ];
-//            this.arrays.texture_coord = [
-//                vec(0, 0), vec(1, 0), vec(0, 1),
-//                vec(1, 1), vec(1, 0), vec(0, 1)
-//            ]
-//        }
-//    }
+const Square2 =
+    class Square2 extends tiny.Vertex_Buffer {
+        constructor() {
+            super("position", "normal", "texture_coord");
+            this.arrays.position = [
+                vec3(0, 0, 0), vec3(1, 0, 0), vec3(0, 1, 0),
+                vec3(1, 1, 0), vec3(1, 0, 0), vec3(0, 1, 0)
+            ];
+            this.arrays.normal = [
+                vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1),
+                vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1),
+            ];
+            this.arrays.texture_coord = [
+                vec(0, 0), vec(1, 0), vec(0, 1),
+                vec(1, 1), vec(1, 0), vec(0, 1)
+            ]
+        }
+    }
 
 const TreeShape0 =
     class TreeShape0 extends Shape {
@@ -281,6 +283,7 @@ export class Bsp_Demo extends Scene {
             sun: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(4),
             planet1: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
             cube: new Cube(),
+            square_2d: new Square2(),
             floor: new Cube(),
             tree0: new TreeShape0(),
             arrow: new ArrowShape(),
@@ -334,6 +337,8 @@ export class Bsp_Demo extends Scene {
 
         // lookat(eye, at, up) , see Dis w3-c page 27
         this.global_camera_location = Mat4.look_at(vec3(10, 20, 45), vec3(10, 1, 0), vec3(0, 1, 0));
+
+        this.mm_camera_location = Mat4.look_at(vec3(0, 50, 0), vec3(0, 0, 0), vec3(0, 0, -1));
 
         this.switch_camera = false;
         this.cur_camera = 0;
@@ -399,6 +404,10 @@ export class Bsp_Demo extends Scene {
         }
 
         console.log(''+this.bsp_root);
+
+        // mini map
+        this.mm_height = 125;
+        this.mm_width = 125;
     }
 
     /**
@@ -660,9 +669,10 @@ export class Bsp_Demo extends Scene {
                 stack.push(node.back);
             }
         }
+
     }
 
-    render_scene(context, program_state) {
+    render_scene(context, program_state, mm=false) {
         //
         // Perform all necessary calculations here:
         //
@@ -675,20 +685,20 @@ export class Bsp_Demo extends Scene {
         let sun_pos = vec3(-10, 10, -10);
 
         // The parameters of the Light are: position, color, size
-        program_state.lights = [new Light(vec4(sun_pos[0],sun_pos[1],sun_pos[2],1), hex_color('#FFFF00'), light_size)];
+//        program_state.lights = [new Light(vec4(sun_pos[0],sun_pos[1],sun_pos[2],1), hex_color('#FFFF00'), light_size)];
 
         // The position of the light
-//        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
-//        //this.light_position = Mat4.rotation(t / 1500, 0, 1, 0).times(vec4(3, 6, 0, 1));
-//        // The color of the light
-//        this.light_color = color(1, 1, 1, 1);
-//
-//        // This is a rough target of the light.
-//        // Although the light is point light, we need a target to set the POV of the light
-//        this.light_view_target = vec4(0, 0, 0, 1);
-//        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
-//
-//        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
+        this.light_position = this.light_position = vec4(-3, 6, 3, 1);
+        //this.light_position = Mat4.rotation(t / 1500, 0, 1, 0).times(vec4(3, 6, 0, 1));
+        // The color of the light
+        this.light_color = color(1, 1, 1, 1);
+
+        // This is a rough target of the light.
+        // Although the light is point light, we need a target to set the POV of the light
+        this.light_view_target = vec4(0, 0, 0, 1);
+        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
+
+        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
 
 
         // do objects
@@ -724,7 +734,7 @@ export class Bsp_Demo extends Scene {
         }
 
         // draw player
-        if (this.cur_camera != 1) {
+        if (this.cur_camera != 1 || mm) {
             this.render_player(context, program_state);
         }
 
@@ -743,7 +753,17 @@ export class Bsp_Demo extends Scene {
     }
 
 
+    render_current_camera(context, program_state) {
+
+    }
+
+
     display(context, program_state) {
+        const t = program_state.animation_time;
+        const gl = context.context;
+
+        gl.enable(gl.SCISSOR_TEST);
+
         // display():  Called once per frame of animation.
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
@@ -752,25 +772,35 @@ export class Bsp_Demo extends Scene {
             program_state.set_camera(this.global_camera_location);
         }
 
-        if (this.switch_camera) {
-            this._prev_camera_transform = context.scratchpad.controls.inverse();
-//            console.log('prev camera transform');
-//            console.log(this._prev_camera_transform);
-            if (this.cur_camera == 1) {
-                program_state.set_camera(this.camera.matrix());
-            }
-            else {
-                if (context.scratchpad.controls.matrix) {
-                    // common.js Movement_Controls applies a closure to modify the matrix, so this is saved here:
-                    program_state.set_camera(this.global_camera_location);
-                }
-            }
-            this.switch_camera = false;
-        }
+//        if (this.switch_camera) {
+//            this._prev_camera_transform = context.scratchpad.controls.inverse();
+////            console.log('prev camera transform');
+////            console.log(this._prev_camera_transform);
+//            if (this.cur_camera == 1) {
+//                program_state.set_camera(this.camera.matrix());
+//            }
+//            else {
+//                if (context.scratchpad.controls.matrix) {
+//                    // common.js Movement_Controls applies a closure to modify the matrix, so this is saved here:
+//                    program_state.set_camera(this.global_camera_location);
+//                }
+//            }
+//            this.switch_camera = false;
+//        }
 
         if (this.cur_camera == 1) {
             program_state.set_camera(this.camera.matrix());
         }
+        else if (this.cur_camera == 0) {
+            program_state.set_camera(this.global_camera_location);
+        }
+
+        // Draw to the canvas
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.scissor(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+//        program_state.view_mat = program_state.camera_inverse;
 
 //        program_state.projection_transform = Mat4.perspective(
 //            Math.PI / 4, context.width / context.height, .1, 1000);
@@ -779,13 +809,32 @@ export class Bsp_Demo extends Scene {
             program_state.projection_transform = Mat4.perspective(
                 45 * (Math.PI/180), context.width / context.height, .1, 1000);
         }
-        else {
+        else if (this.cur_camera == 1) {
             program_state.projection_transform = Mat4.perspective(
                 this.camera.fov * (Math.PI/180), context.width / context.height, .1, 1000);
         }
 
         // Render scene
         this.render_scene(context, program_state);
+
+        // Render map
+        gl.viewport(15, 5, this.mm_width, this.mm_height);
+        gl.scissor(15, 5, this.mm_width, this.mm_height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+//        program_state.set_camera(this.camera.matrix());
+        program_state.set_camera(this.mm_camera_location);
+        this.render_scene(context, program_state, true);
+
+        gl.viewport(15*2+this.mm_width, 5, this.mm_width, this.mm_height);
+        gl.scissor(15*2+this.mm_width, 5, this.mm_width, this.mm_height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+//        program_state.set_camera(this.camera.matrix());
+        program_state.set_camera(this.mm_camera_location);
+        this.render_scene(context, program_state, true);
+//        program_state.set_camera(this.global_camera_location);
+
     }
 
 }
