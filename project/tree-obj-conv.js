@@ -1,8 +1,8 @@
-import {defs, tiny} from './common.js';
+import {defs, tiny} from './../examples/common.js';
 // Pull these names into this module's scope for convenience:
 const {vec3, vec4, vec, color, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
 
-export class Shape_From_File extends Shape {                                   // **Shape_From_File** is a versatile standalone Shape that imports
+export class Tree_From_File extends Shape {                                   // **Shape_From_File** is a versatile standalone Shape that imports
                                                                                // all its arrays' data from an .obj 3D model file.
     constructor(filename) {
         super("position", "normal", "texture_coord");
@@ -60,8 +60,8 @@ export class Shape_From_File extends Shape {                                   /
                     if (elements[j] in unpacked.hashindices)
                         unpacked.indices.push(unpacked.hashindices[elements[j]]);
                     else {
-                        var vertex = elements[j].split('/');
-                        //console.log(vertex);
+                        var vertex = elements[j].split(' ');
+                        console.log(vertex);
 
                         unpacked.verts.push(+verts[(vertex[0] - 1) * 3 + 0]);
                         unpacked.verts.push(+verts[(vertex[0] - 1) * 3 + 1]);
@@ -106,7 +106,7 @@ export class Shape_From_File extends Shape {                                   /
     }
 }
 
-export class Obj_File_Demo extends Scene {                           // **Obj_File_Demo** show how to load a single 3D model from an OBJ file.
+export class Tree_File_Demo extends Scene {                           // **Obj_File_Demo** show how to load a single 3D model from an OBJ file.
                                                                      // Detailed model files can be used in place of simpler primitive-based
                                                                      // shapes to add complexity to a scene.  Simpler primitives in your scene
                                                                      // can just be thought of as placeholders until you find a model file
@@ -116,7 +116,7 @@ export class Obj_File_Demo extends Scene {                           // **Obj_Fi
     constructor() {
         super();
         // Load the model file:
-        this.shapes = {"teapot": new Shape_From_File("assets/Test.obj")};
+        this.shapes = {"teapot": new Tree_From_File("assets/lowpolytree.obj")};
 
         // Don't create any DOM elements to control this scene:
         this.widget_options = {make_controls: false};
@@ -143,11 +143,10 @@ export class Obj_File_Demo extends Scene {                           // **Obj_Fi
             color(1, .7, .7, 1), 100000)];
 
         for (let i of [-1, 1]) {                                       // Spin the 3D model shapes as well.
-            const model_transform = Mat4.rotation(4.8, 1, 0, 0);
+            const model_transform = Mat4.rotation(t / 2000, 0, 1, 0);
                 //.times(Mat4.translation(2 * i, 0, 0))
                 //.times(Mat4.rotation(t / 1500, -1, 2, 0))
                 //.times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
-            console.log(t/2000);
             this.shapes.teapot.draw(context, program_state, model_transform, i == 1 ? this.stars : this.bumps);
         }
     }
